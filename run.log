@@ -1,0 +1,397 @@
+build-and-test	Set up job	﻿2026-10-08T18:16:23.8933845Z Current runner version: '2.337.0'
+build-and-test	Set up job	2026-10-08T18:16:23.8958617Z ##[group]Runner Image Provisioner
+build-and-test	Set up job	2026-10-08T18:16:23.8959473Z Hosted Compute Agent
+build-and-test	Set up job	2026-10-08T18:16:23.8960086Z Version: 20261002.596
+build-and-test	Set up job	2026-10-08T18:16:23.8960726Z Commit: c3d12f3313a95f25162a1503be624f3b0617f8c0
+build-and-test	Set up job	2026-10-08T18:16:23.8961421Z Build Date: 2026-10-02T22:28:27Z
+build-and-test	Set up job	2026-10-08T18:16:23.8962063Z Worker ID: {370aaac6-0286-4311-bbc3-38d64d185cfe}
+build-and-test	Set up job	2026-10-08T18:16:23.8962972Z Region: westus3
+build-and-test	Set up job	2026-10-08T18:16:23.8963629Z Cloud: Azure
+build-and-test	Set up job	2026-10-08T18:16:23.8964120Z ##[endgroup]
+build-and-test	Set up job	2026-10-08T18:16:23.8965551Z ##[group]Operating System
+build-and-test	Set up job	2026-10-08T18:16:23.8966209Z Ubuntu
+build-and-test	Set up job	2026-10-08T18:16:23.8966706Z 24.04.5
+build-and-test	Set up job	2026-10-08T18:16:23.8967216Z LTS
+build-and-test	Set up job	2026-10-08T18:16:23.8967760Z ##[endgroup]
+build-and-test	Set up job	2026-10-08T18:16:23.8968258Z ##[group]Runner Image
+build-and-test	Set up job	2026-10-08T18:16:23.8968846Z Image: ubuntu-24.04
+build-and-test	Set up job	2026-10-08T18:16:23.8969375Z Version: 20261004.327.1
+build-and-test	Set up job	2026-10-08T18:16:23.8970375Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261004.327/images/ubuntu/Ubuntu2404-Readme.md
+build-and-test	Set up job	2026-10-08T18:16:23.8972038Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261004.327
+build-and-test	Set up job	2026-10-08T18:16:23.8973106Z ##[endgroup]
+build-and-test	Set up job	2026-10-08T18:16:23.8974216Z ##[group]GITHUB_TOKEN Permissions
+build-and-test	Set up job	2026-10-08T18:16:23.8976157Z Contents: read
+build-and-test	Set up job	2026-10-08T18:16:23.8976730Z Metadata: read
+build-and-test	Set up job	2026-10-08T18:16:23.8977320Z Packages: read
+build-and-test	Set up job	2026-10-08T18:16:23.8977852Z ##[endgroup]
+build-and-test	Set up job	2026-10-08T18:16:23.8979862Z Secret source: Actions
+build-and-test	Set up job	2026-10-08T18:16:23.8980799Z Cache mode: write
+build-and-test	Set up job	2026-10-08T18:16:23.8981426Z Prepare workflow directory
+build-and-test	Set up job	2026-10-08T18:16:23.9406361Z Prepare all required actions
+build-and-test	Set up job	2026-10-08T18:16:23.9455508Z Getting action download info
+build-and-test	Set up job	2026-10-08T18:16:24.2585819Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+build-and-test	Set up job	2026-10-08T18:16:24.3337609Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+build-and-test	Set up job	2026-10-08T18:16:24.4981666Z Complete job name: build-and-test
+build-and-test	Initialize containers	﻿2026-10-08T18:16:24.5429811Z ##[group]Checking docker version
+build-and-test	Initialize containers	2026-10-08T18:16:24.5442860Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6228476Z '1.48'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6237479Z Docker daemon API version: '1.48'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6238474Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6410869Z '1.48'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6420774Z Docker client API version: '1.48'
+build-and-test	Initialize containers	2026-10-08T18:16:24.6428133Z ##[endgroup]
+build-and-test	Initialize containers	2026-10-08T18:16:24.6431446Z ##[group]Clean up resources from previous jobs
+build-and-test	Initialize containers	2026-10-08T18:16:24.6437121Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=7d5e8f"
+build-and-test	Initialize containers	2026-10-08T18:16:24.6590094Z ##[command]/usr/bin/docker network prune --force --filter "label=7d5e8f"
+build-and-test	Initialize containers	2026-10-08T18:16:24.6851867Z ##[endgroup]
+build-and-test	Initialize containers	2026-10-08T18:16:24.6852454Z ##[group]Create local container network
+build-and-test	Initialize containers	2026-10-08T18:16:24.6862330Z ##[command]/usr/bin/docker network create --label 7d5e8f github_network_aaf7d075fa6d492c9a7a376879000de3
+build-and-test	Initialize containers	2026-10-08T18:16:24.7304484Z 7cb6b7a21d08eed448cedd3bec34d02d4ce5eca65e980989135136aaeb67e718
+build-and-test	Initialize containers	2026-10-08T18:16:24.7317374Z ##[endgroup]
+build-and-test	Initialize containers	2026-10-08T18:16:24.7344105Z ##[group]Starting postgres service container
+build-and-test	Initialize containers	2026-10-08T18:16:24.7365936Z ##[command]/usr/bin/docker pull postgres:15
+build-and-test	Initialize containers	2026-10-08T18:16:25.5493289Z 15: Pulling from library/postgres
+build-and-test	Initialize containers	2026-10-08T18:16:25.7799443Z ecc510c1e359: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7801423Z 4b5dc4352899: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7805150Z 070873950b18: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7807365Z 8bc3c2e35349: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7809166Z 2260c4957d6a: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7810611Z 9147e7910f0b: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7811853Z 2fc81bab6318: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7813321Z 284f94de039c: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7814500Z 554af8d1cb5e: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7815679Z c503228ba229: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7816850Z f410f7e4b5bb: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7818400Z 1334c6144a55: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7819439Z 79f55b6c0eb9: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7820456Z b3db397181ff: Pulling fs layer
+build-and-test	Initialize containers	2026-10-08T18:16:25.7821444Z 8bc3c2e35349: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7822325Z 2260c4957d6a: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7823333Z 9147e7910f0b: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7824213Z 2fc81bab6318: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7825081Z c503228ba229: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7825958Z 284f94de039c: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7827012Z 554af8d1cb5e: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7828132Z f410f7e4b5bb: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7829248Z 79f55b6c0eb9: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7830361Z 1334c6144a55: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:25.7831482Z b3db397181ff: Waiting
+build-and-test	Initialize containers	2026-10-08T18:16:26.0168475Z 4b5dc4352899: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.0170204Z 4b5dc4352899: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.0422238Z 070873950b18: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.0424079Z 070873950b18: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.0964287Z ecc510c1e359: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.0966431Z ecc510c1e359: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.1937533Z 8bc3c2e35349: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.1939144Z 8bc3c2e35349: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.2469661Z 2260c4957d6a: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.2470511Z 2260c4957d6a: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.2847636Z 9147e7910f0b: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.2848721Z 9147e7910f0b: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.3658003Z 2fc81bab6318: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.4275118Z 284f94de039c: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.4276633Z 284f94de039c: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.5465014Z c503228ba229: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.5465728Z c503228ba229: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.5943893Z f410f7e4b5bb: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.5944763Z f410f7e4b5bb: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.7147031Z 1334c6144a55: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.7147749Z 1334c6144a55: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.7554699Z 554af8d1cb5e: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.7555849Z 554af8d1cb5e: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.7625595Z 79f55b6c0eb9: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.7627447Z 79f55b6c0eb9: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.8969364Z b3db397181ff: Verifying Checksum
+build-and-test	Initialize containers	2026-10-08T18:16:26.8969935Z b3db397181ff: Download complete
+build-and-test	Initialize containers	2026-10-08T18:16:26.9791047Z ecc510c1e359: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.2541915Z 4b5dc4352899: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.4043004Z 070873950b18: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.4414666Z 8bc3c2e35349: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.6852339Z 2260c4957d6a: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.7484396Z 9147e7910f0b: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.7546673Z 2fc81bab6318: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:27.7639272Z 284f94de039c: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4063486Z 554af8d1cb5e: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4177322Z c503228ba229: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4252238Z f410f7e4b5bb: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4319266Z 1334c6144a55: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4397553Z 79f55b6c0eb9: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4463124Z b3db397181ff: Pull complete
+build-and-test	Initialize containers	2026-10-08T18:16:30.4495155Z Digest: sha256:c961aa287d8698297cb26cdfadfbe9fd2cbaf77e53cfffe9636e8d8a1e4d842c
+build-and-test	Initialize containers	2026-10-08T18:16:30.4508798Z Status: Downloaded newer image for postgres:15
+build-and-test	Initialize containers	2026-10-08T18:16:30.4517892Z docker.io/library/postgres:15
+build-and-test	Initialize containers	2026-10-08T18:16:30.4575233Z ##[command]/usr/bin/docker create --name 366cfa0c42454c229faf30366125f652_postgres15_3de1d1 --label 7d5e8f --network github_network_aaf7d075fa6d492c9a7a376879000de3 --network-alias postgres -p 5432:5432 --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 -e "POSTGRES_USER=user" -e "POSTGRES_PASSWORD=password" -e "POSTGRES_DB=insurance_db" -e GITHUB_ACTIONS=true -e CI=true postgres:15
+build-and-test	Initialize containers	2026-10-08T18:16:30.4815442Z 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:30.4834975Z ##[command]/usr/bin/docker start 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:30.6740712Z 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:30.6759581Z ##[command]/usr/bin/docker ps --all --filter id=3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+build-and-test	Initialize containers	2026-10-08T18:16:30.6901649Z 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073 Up Less than a second (health: starting)
+build-and-test	Initialize containers	2026-10-08T18:16:30.6918456Z ##[command]/usr/bin/docker port 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:30.7072004Z 5432/tcp -> 0.0.0.0:5432
+build-and-test	Initialize containers	2026-10-08T18:16:30.7072991Z 5432/tcp -> [::]:5432
+build-and-test	Initialize containers	2026-10-08T18:16:30.7132867Z ##[endgroup]
+build-and-test	Initialize containers	2026-10-08T18:16:30.7144982Z ##[group]Waiting for all services to be ready
+build-and-test	Initialize containers	2026-10-08T18:16:30.7164375Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:30.7310817Z starting
+build-and-test	Initialize containers	2026-10-08T18:16:30.7329270Z postgres service is starting, waiting 2 seconds before checking again.
+build-and-test	Initialize containers	2026-10-08T18:16:32.7334405Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:32.7472463Z starting
+build-and-test	Initialize containers	2026-10-08T18:16:32.7481386Z postgres service is starting, waiting 3 seconds before checking again.
+build-and-test	Initialize containers	2026-10-08T18:16:36.7313063Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:36.7456017Z starting
+build-and-test	Initialize containers	2026-10-08T18:16:36.7465012Z postgres service is starting, waiting 7 seconds before checking again.
+build-and-test	Initialize containers	2026-10-08T18:16:44.3658428Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Initialize containers	2026-10-08T18:16:44.3793128Z healthy
+build-and-test	Initialize containers	2026-10-08T18:16:44.3825465Z postgres service is healthy.
+build-and-test	Initialize containers	2026-10-08T18:16:44.3826211Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	﻿2026-10-08T18:16:44.4117130Z ##[group]Run actions/checkout@v4
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4117684Z with:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4117999Z   repository: Arturrio112/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4120738Z   token: ***
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4120959Z   ssh-strict: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4121181Z   ssh-user: git
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4121408Z   persist-credentials: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4121655Z   clean: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4121877Z   sparse-checkout-cone-mode: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4122141Z   fetch-depth: 1
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4122346Z   fetch-tags: false
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4122548Z   show-progress: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4123003Z   lfs: false
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4123202Z   submodules: false
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4123417Z   set-safe-directory: true
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4123668Z   allow-unsafe-pr-checkout: false
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.4124174Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5154943Z Syncing repository: Arturrio112/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5156514Z ##[group]Getting Git version info
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5157560Z Working directory is '/home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator'
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5158397Z [command]/usr/bin/git version
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5188042Z git version 2.55.0
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5208774Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5226331Z Temporarily overriding HOME='/home/runner/work/_temp/c33d4eaf-dabe-4c44-8f80-be30aa8ebc27' before making global git config changes
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5227650Z Adding repository directory to the temporary git global config as a safe directory
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5233977Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5287917Z Deleting the contents of '/home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator'
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5295009Z ##[group]Initializing the repository
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5300092Z [command]/usr/bin/git init /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5399199Z hint: Using 'master' as the name for the initial branch. This default branch name
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5400535Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5401583Z hint: to use in all of your new repositories, which will suppress this warning,
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5402371Z hint: call:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5403003Z hint:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5403746Z hint: 	git config --global init.defaultBranch <name>
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5404457Z hint:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5405161Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5406208Z hint: 'development'. The just-created branch can be renamed via this command:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5407120Z hint:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5407629Z hint: 	git branch -m <name>
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5408186Z hint:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5408943Z hint: Disable this message with "git config set advice.defaultBranchName false"
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5410655Z Initialized empty Git repository in /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator/.git/
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5413662Z [command]/usr/bin/git remote add origin https://github.com/Arturrio112/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5456375Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5457053Z ##[group]Disabling automatic garbage collection
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5461518Z [command]/usr/bin/git config --local gc.auto 0
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5490212Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5490792Z ##[group]Setting up auth
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5498467Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5534722Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5882836Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.5923135Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6135435Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6167889Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6358983Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6395555Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6396263Z ##[group]Fetching the repository
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:44.6406337Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +4ae10773d9045c7c01a068125469cf645cd6e35a:refs/remotes/pull/4/merge
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1430546Z From https://github.com/Arturrio112/AgenticInsuranceClaimOrchestrator
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1431570Z  * [new ref]         4ae10773d9045c7c01a068125469cf645cd6e35a -> pull/4/merge
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1435320Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1435919Z ##[group]Determining the checkout info
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1438942Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1444792Z [command]/usr/bin/git sparse-checkout disable
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1523979Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1549638Z ##[group]Checking out the ref
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1573944Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/4/merge
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1616332Z Note: switching to 'refs/remotes/pull/4/merge'.
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1616719Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1617285Z You are in 'detached HEAD' state. You can look around, make experimental
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1618144Z changes and commit them, and you can discard any commits you make in this
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1618802Z state without impacting any branches by switching back to a branch.
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1619079Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1619425Z If you want to create a new branch to retain commits you create, you may
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1620060Z do so (now or later) by using -c with the switch command. Example:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1620447Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1620608Z   git switch -c <new-branch-name>
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1620858Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1620972Z Or undo this operation with:
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1621127Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1621218Z   git switch -
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1621429Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1621742Z Turn off this advice by setting config variable advice.detachedHead to false
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1622206Z 
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1622839Z HEAD is now at 4ae1077 Merge 68b6dc868db7436b21057e3e98794b5aa1f307b1 into de5bd83231b1625ec9fbedd7bba0596b3e7176e2
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1624698Z ##[endgroup]
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1660097Z [command]/usr/bin/git log -1 --format=%H
+build-and-test	Run actions/checkout@v4	2026-10-08T18:16:45.1679703Z 4ae10773d9045c7c01a068125469cf645cd6e35a
+build-and-test	Use Node.js	﻿2026-10-08T18:16:45.1912327Z ##[group]Run actions/setup-node@v4
+build-and-test	Use Node.js	2026-10-08T18:16:45.1912613Z with:
+build-and-test	Use Node.js	2026-10-08T18:16:45.1912948Z   node-version: 20.x
+build-and-test	Use Node.js	2026-10-08T18:16:45.1913162Z   always-auth: false
+build-and-test	Use Node.js	2026-10-08T18:16:45.1913368Z   check-latest: false
+build-and-test	Use Node.js	2026-10-08T18:16:45.1915891Z   token: ***
+build-and-test	Use Node.js	2026-10-08T18:16:45.1916091Z ##[endgroup]
+build-and-test	Use Node.js	2026-10-08T18:16:45.3296209Z Attempting to download 20.x...
+build-and-test	Use Node.js	2026-10-08T18:16:45.3401104Z (node:2713) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+build-and-test	Use Node.js	2026-10-08T18:16:45.3401782Z (Use `node --trace-deprecation ...` to show where the warning was created)
+build-and-test	Use Node.js	2026-10-08T18:16:46.4464613Z Acquiring 20.20.2 - x64 from https://github.com/actions/node-versions/releases/download/20.20.2-23521894959/node-20.20.2-linux-x64.tar.gz
+build-and-test	Use Node.js	2026-10-08T18:16:46.9739776Z Extracting ...
+build-and-test	Use Node.js	2026-10-08T18:16:46.9844024Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/7b15a8d1-d2c0-46bb-b47a-7c52bf9225ff -f /home/runner/work/_temp/57828b09-afe6-4f3a-846f-bff92d3bc6b7
+build-and-test	Use Node.js	2026-10-08T18:16:47.9366256Z Adding to the cache ...
+build-and-test	Use Node.js	2026-10-08T18:16:49.1090569Z ##[group]Environment details
+build-and-test	Use Node.js	2026-10-08T18:16:49.3216426Z node: v20.20.2
+build-and-test	Use Node.js	2026-10-08T18:16:49.3216843Z npm: 10.8.2
+build-and-test	Use Node.js	2026-10-08T18:16:49.3217117Z yarn: 1.22.22
+build-and-test	Use Node.js	2026-10-08T18:16:49.3217770Z ##[endgroup]
+build-and-test	Install dependencies	﻿2026-10-08T18:16:49.3363616Z ##[group]Run npm ci
+build-and-test	Install dependencies	2026-10-08T18:16:49.3363954Z ^[[36;1mnpm ci^[[0m
+build-and-test	Install dependencies	2026-10-08T18:16:49.3503515Z shell: /usr/bin/bash -e {0}
+build-and-test	Install dependencies	2026-10-08T18:16:49.3503832Z ##[endgroup]
+build-and-test	Install dependencies	2026-10-08T18:16:49.7990756Z npm warn EBADENGINE Unsupported engine {
+build-and-test	Install dependencies	2026-10-08T18:16:49.7991356Z npm warn EBADENGINE   package: '@langchain/openai@1.6.2',
+build-and-test	Install dependencies	2026-10-08T18:16:49.7991777Z npm warn EBADENGINE   required: { node: '>=22' },
+build-and-test	Install dependencies	2026-10-08T18:16:49.7992220Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+build-and-test	Install dependencies	2026-10-08T18:16:49.7992581Z npm warn EBADENGINE }
+build-and-test	Install dependencies	2026-10-08T18:16:49.8020661Z npm warn EBADENGINE Unsupported engine {
+build-and-test	Install dependencies	2026-10-08T18:16:49.8021145Z npm warn EBADENGINE   package: 'openai@7.30.1',
+build-and-test	Install dependencies	2026-10-08T18:16:49.8021545Z npm warn EBADENGINE   required: { node: '>=22.0.0' },
+build-and-test	Install dependencies	2026-10-08T18:16:49.8021992Z npm warn EBADENGINE   current: { node: 'v20.20.2', npm: '10.8.2' }
+build-and-test	Install dependencies	2026-10-08T18:16:49.8022357Z npm warn EBADENGINE }
+build-and-test	Install dependencies	2026-10-08T18:16:51.3018175Z npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+build-and-test	Install dependencies	2026-10-08T18:16:51.8432024Z npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+build-and-test	Install dependencies	2026-10-08T18:16:52.8907033Z npm warn deprecated @humanwhocodes/object-schema@2.0.3: Use @eslint/object-schema instead
+build-and-test	Install dependencies	2026-10-08T18:16:52.8974561Z npm warn deprecated @humanwhocodes/config-array@0.13.0: Use @eslint/config-array instead
+build-and-test	Install dependencies	2026-10-08T18:16:53.2265309Z npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+build-and-test	Install dependencies	2026-10-08T18:16:53.7462545Z npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+build-and-test	Install dependencies	2026-10-08T18:16:55.1581419Z npm warn deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+build-and-test	Install dependencies	2026-10-08T18:16:57.5041793Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5043001Z added 573 packages, and audited 574 packages in 8s
+build-and-test	Install dependencies	2026-10-08T18:16:57.5043895Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5044358Z 127 packages are looking for funding
+build-and-test	Install dependencies	2026-10-08T18:16:57.5045091Z   run `npm fund` for details
+build-and-test	Install dependencies	2026-10-08T18:16:57.5427609Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5428172Z 20 moderate severity vulnerabilities
+build-and-test	Install dependencies	2026-10-08T18:16:57.5428412Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5428617Z To address issues that do not require attention, run:
+build-and-test	Install dependencies	2026-10-08T18:16:57.5428938Z   npm audit fix
+build-and-test	Install dependencies	2026-10-08T18:16:57.5429073Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5429289Z To address all issues (including breaking changes), run:
+build-and-test	Install dependencies	2026-10-08T18:16:57.5429622Z   npm audit fix --force
+build-and-test	Install dependencies	2026-10-08T18:16:57.5429757Z 
+build-and-test	Install dependencies	2026-10-08T18:16:57.5429908Z Run `npm audit` for details.
+build-and-test	Run Linter	﻿2026-10-08T18:16:57.5697997Z ##[group]Run npm run lint
+build-and-test	Run Linter	2026-10-08T18:16:57.5698323Z ^[[36;1mnpm run lint^[[0m
+build-and-test	Run Linter	2026-10-08T18:16:57.5737448Z shell: /usr/bin/bash -e {0}
+build-and-test	Run Linter	2026-10-08T18:16:57.5737717Z ##[endgroup]
+build-and-test	Run Linter	2026-10-08T18:16:57.6820859Z 
+build-and-test	Run Linter	2026-10-08T18:16:57.6821685Z > agenticinsuranceclaimorchestrator@1.0.0 lint
+build-and-test	Run Linter	2026-10-08T18:16:57.6822324Z > eslint "src/**/*.ts"
+build-and-test	Run Linter	2026-10-08T18:16:57.6822563Z 
+build-and-test	Run Linter	2026-10-08T18:16:58.7279698Z 
+build-and-test	Run Linter	2026-10-08T18:16:58.7280997Z /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator/src/__tests__/e2e/claim_resolution.test.ts
+build-and-test	Run Linter	2026-10-08T18:16:58.7310418Z ##[error]  8:27  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+build-and-test	Run Linter	2026-10-08T18:16:58.7319214Z 
+build-and-test	Run Linter	2026-10-08T18:16:58.7319982Z /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator/src/api/webhook.ts
+build-and-test	Run Linter	2026-10-08T18:16:58.7321190Z   12:40  error  The `{}` ("empty object") type allows any non-nullish value, including literals like `0` and `""`.
+build-and-test	Run Linter	2026-10-08T18:16:58.7322127Z - If that's what you want, disable this lint rule with an inline comment or configure the 'allowObjectTypes' rule option.
+build-and-test	Run Linter	2026-10-08T18:16:58.7323115Z - If you want a type meaning "any object", you probably want `object` instead.
+build-and-test	Run Linter	2026-10-08T18:16:58.7323912Z - If you want a type meaning "any value", you probably want `unknown` instead  @typescript-eslint/no-empty-object-type
+build-and-test	Run Linter	2026-10-08T18:16:58.7324855Z   12:44  error  The `{}` ("empty object") type allows any non-nullish value, including literals like `0` and `""`.
+build-and-test	Run Linter	2026-10-08T18:16:58.7325777Z - If that's what you want, disable this lint rule with an inline comment or configure the 'allowObjectTypes' rule option.
+build-and-test	Run Linter	2026-10-08T18:16:58.7326570Z - If you want a type meaning "any object", you probably want `object` instead.
+build-and-test	Run Linter	2026-10-08T18:16:58.7327326Z - If you want a type meaning "any value", you probably want `unknown` instead  @typescript-eslint/no-empty-object-type
+build-and-test	Run Linter	2026-10-08T18:16:58.7327755Z 
+build-and-test	Run Linter	2026-10-08T18:16:58.7328200Z ✖ 3 problems (3 errors, 0 warnings)
+build-and-test	Run Linter	2026-10-08T18:16:58.7328435Z 
+build-and-test	Run Linter	2026-10-08T18:16:58.7442908Z ##[error]Process completed with exit code 1.
+build-and-test	Post Run actions/checkout@v4	﻿2026-10-08T18:16:58.7568702Z Post job cleanup.
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8399705Z [command]/usr/bin/git version
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8438239Z git version 2.55.0
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8474144Z Temporarily overriding HOME='/home/runner/work/_temp/8119b6ab-9dfd-43eb-8b20-7df18721939a' before making global git config changes
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8475809Z Adding repository directory to the temporary git global config as a safe directory
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8480448Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AgenticInsuranceClaimOrchestrator/AgenticInsuranceClaimOrchestrator
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8516418Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8548149Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8769119Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8794533Z http.https://github.com/.extraheader
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8808697Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.8845630Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.9045620Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+build-and-test	Post Run actions/checkout@v4	2026-10-08T18:16:58.9079174Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+build-and-test	Stop containers	﻿2026-10-08T18:16:58.9438020Z Print service container logs: 366cfa0c42454c229faf30366125f652_postgres15_3de1d1
+build-and-test	Stop containers	2026-10-08T18:16:58.9443282Z ##[command]/usr/bin/docker logs --details 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Stop containers	2026-10-08T18:16:58.9565904Z  initdb: warning: enabling "trust" authentication for local connections
+build-and-test	Stop containers	2026-10-08T18:16:58.9566722Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+build-and-test	Stop containers	2026-10-08T18:16:58.9567692Z  2026-10-08 18:16:31.476 UTC [1] LOG:  starting PostgreSQL 15.19 (Debian 15.19-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+build-and-test	Stop containers	2026-10-08T18:16:58.9568469Z  2026-10-08 18:16:31.477 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+build-and-test	Stop containers	2026-10-08T18:16:58.9568982Z  2026-10-08 18:16:31.477 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+build-and-test	Stop containers	2026-10-08T18:16:58.9569475Z  2026-10-08 18:16:31.477 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+build-and-test	Stop containers	2026-10-08T18:16:58.9570115Z  2026-10-08 18:16:31.480 UTC [64] LOG:  database system was shut down at 2026-10-08 18:16:31 UTC
+build-and-test	Stop containers	2026-10-08T18:16:58.9570670Z  2026-10-08 18:16:31.483 UTC [1] LOG:  database system is ready to accept connections
+build-and-test	Stop containers	2026-10-08T18:16:58.9571123Z  2026-10-08 18:16:40.729 UTC [75] FATAL:  role "root" does not exist
+build-and-test	Stop containers	2026-10-08T18:16:58.9571627Z  The files belonging to this database system will be owned by user "postgres".
+build-and-test	Stop containers	2026-10-08T18:16:58.9572394Z  2026-10-08 18:16:50.791 UTC [83] FATAL:  role "root" does not exist
+build-and-test	Stop containers	2026-10-08T18:16:58.9572957Z  This user must also own the server process.
+build-and-test	Stop containers	2026-10-08T18:16:58.9573304Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9573709Z  The database cluster will be initialized with locale "en_US.utf8".
+build-and-test	Stop containers	2026-10-08T18:16:58.9574197Z  The default database encoding has accordingly been set to "UTF8".
+build-and-test	Stop containers	2026-10-08T18:16:58.9574737Z  The default text search configuration will be set to "english".
+build-and-test	Stop containers	2026-10-08T18:16:58.9575110Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9575438Z  Data page checksums are disabled.
+build-and-test	Stop containers	2026-10-08T18:16:58.9575737Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9576159Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9576594Z  creating subdirectories ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9577012Z  selecting dynamic shared memory implementation ... posix
+build-and-test	Stop containers	2026-10-08T18:16:58.9577401Z  selecting default max_connections ... 100
+build-and-test	Stop containers	2026-10-08T18:16:58.9577816Z  selecting default shared_buffers ... 128MB
+build-and-test	Stop containers	2026-10-08T18:16:58.9578167Z  selecting default time zone ... Etc/UTC
+build-and-test	Stop containers	2026-10-08T18:16:58.9578584Z  creating configuration files ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9578911Z  running bootstrap script ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9579624Z  performing post-bootstrap initialization ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9580009Z  syncing data to disk ... ok
+build-and-test	Stop containers	2026-10-08T18:16:58.9580360Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9580586Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9580919Z  Success. You can now start the database server using:
+build-and-test	Stop containers	2026-10-08T18:16:58.9581272Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9581556Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+build-and-test	Stop containers	2026-10-08T18:16:58.9582000Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9582868Z  waiting for server to start....2026-10-08 18:16:31.187 UTC [48] LOG:  starting PostgreSQL 15.19 (Debian 15.19-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+build-and-test	Stop containers	2026-10-08T18:16:58.9583825Z  2026-10-08 18:16:31.188 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+build-and-test	Stop containers	2026-10-08T18:16:58.9584497Z  2026-10-08 18:16:31.190 UTC [51] LOG:  database system was shut down at 2026-10-08 18:16:31 UTC
+build-and-test	Stop containers	2026-10-08T18:16:58.9585108Z  2026-10-08 18:16:31.193 UTC [48] LOG:  database system is ready to accept connections
+build-and-test	Stop containers	2026-10-08T18:16:58.9585521Z   done
+build-and-test	Stop containers	2026-10-08T18:16:58.9585824Z  server started
+build-and-test	Stop containers	2026-10-08T18:16:58.9586084Z  CREATE DATABASE
+build-and-test	Stop containers	2026-10-08T18:16:58.9586324Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9586618Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9586963Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+build-and-test	Stop containers	2026-10-08T18:16:58.9587468Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9587837Z  waiting for server to shut down...2026-10-08 18:16:31.358 UTC [48] LOG:  received fast shutdown request
+build-and-test	Stop containers	2026-10-08T18:16:58.9588660Z  .2026-10-08 18:16:31.359 UTC [48] LOG:  aborting any active transactions
+build-and-test	Stop containers	2026-10-08T18:16:58.9589349Z  2026-10-08 18:16:31.360 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+build-and-test	Stop containers	2026-10-08T18:16:58.9589986Z  2026-10-08 18:16:31.361 UTC [49] LOG:  shutting down
+build-and-test	Stop containers	2026-10-08T18:16:58.9590622Z  2026-10-08 18:16:31.361 UTC [49] LOG:  checkpoint starting: shutdown immediate
+build-and-test	Stop containers	2026-10-08T18:16:58.9591688Z  2026-10-08 18:16:31.373 UTC [49] LOG:  checkpoint complete: wrote 922 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.008 s, sync=0.004 s, total=0.013 s; sync files=301, longest=0.003 s, average=0.001 s; distance=4239 kB, estimate=4239 kB
+build-and-test	Stop containers	2026-10-08T18:16:58.9593257Z  2026-10-08 18:16:31.377 UTC [48] LOG:  database system is shut down
+build-and-test	Stop containers	2026-10-08T18:16:58.9593802Z   done
+build-and-test	Stop containers	2026-10-08T18:16:58.9593994Z  server stopped
+build-and-test	Stop containers	2026-10-08T18:16:58.9594203Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9594448Z  PostgreSQL init process complete; ready for start up.
+build-and-test	Stop containers	2026-10-08T18:16:58.9594738Z  
+build-and-test	Stop containers	2026-10-08T18:16:58.9606258Z Stop and remove container: 366cfa0c42454c229faf30366125f652_postgres15_3de1d1
+build-and-test	Stop containers	2026-10-08T18:16:58.9611595Z ##[command]/usr/bin/docker rm --force 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Stop containers	2026-10-08T18:17:00.2092583Z 3e091857a40d781dfe1e5e276a296b276d10505e8d7f8e74db7f8d0365ab5073
+build-and-test	Stop containers	2026-10-08T18:17:00.2113682Z Remove container network: github_network_aaf7d075fa6d492c9a7a376879000de3
+build-and-test	Stop containers	2026-10-08T18:17:00.2118021Z ##[command]/usr/bin/docker network rm github_network_aaf7d075fa6d492c9a7a376879000de3
+build-and-test	Stop containers	2026-10-08T18:17:00.2971967Z github_network_aaf7d075fa6d492c9a7a376879000de3
+build-and-test	Complete job	﻿2026-10-08T18:17:00.3045111Z Cleaning up orphan processes
+build-and-test	Complete job	2026-10-08T18:17:00.3284440Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
