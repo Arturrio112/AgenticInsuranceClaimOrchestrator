@@ -27,6 +27,26 @@ services:
     networks:
       - app-network
 
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password123
+      - DB_NAME=insurance_db
+      - DATABASE_URL=postgresql://admin:password123@postgres:5432/insurance_db
+      - JWT_SECRET=supersecret
+      - PORT=3000
+      - LLM_PROVIDER=ollama
+      - LLM_MODEL=llama3.1
+    networks:
+      - app-network
+
 volumes:
   pgdata:
 
