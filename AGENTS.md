@@ -60,3 +60,7 @@ We are building a portfolio piece for an **AI Engineer / AI Agent Developer** ro
 - **Merging:** When the user explicitly approves PRs for merging, the main agent will spawn a `pr_merger` subagent.
 - **Role:** The `pr_merger` subagent will iterate through the approved PR numbers and attempt to merge them (`gh pr merge <pr_number> --merge`). If a merge conflict blocks the merge, it will report back to the main agent.
 - **Handling Merge Failures:** If `pr_merger` reports a conflict, the main agent will spawn a `pr_fixer` specifically to resolve the conflict on that PR branch, wait for CI to pass, and then re-attempt the merge.
+
+### 9. Environment Variables & Docker
+- **No Hardcoded Secrets:** Never hardcode passwords, emails, or API keys in `docker-compose.yml`, `Dockerfile`, or source code.
+- **Strict .env Usage:** All configurable settings (especially for Docker services like Postgres or PgAdmin) MUST be injected via `.env` file variables (e.g., `POSTGRES_USER: ${DB_USER}`). Ensure `.env.example` is always updated when a new variable is introduced.
