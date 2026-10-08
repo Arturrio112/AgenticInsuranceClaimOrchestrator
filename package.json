@@ -2,11 +2,13 @@
   "name": "agenticinsuranceclaimorchestrator",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js src/__tests__/mcp",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js src/__tests__/e2e",
     "lint": "eslint \"src/**/*.ts\""
