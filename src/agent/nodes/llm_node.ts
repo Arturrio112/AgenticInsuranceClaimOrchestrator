@@ -24,7 +24,7 @@ switch (provider.toLowerCase()) {
         break;
     case "ollama":
     default:
-        llm = new ChatOllama({ model: modelName, temperature });
+        llm = new ChatOllama({ model: modelName, temperature, baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434" });
         break;
 }
 
