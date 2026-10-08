@@ -55,3 +55,8 @@ We are building a portfolio piece for an **AI Engineer / AI Agent Developer** ro
   2. Identify the conflicting files and resolve the git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) intelligently, ensuring neither agent's logic is lost.
   3. Commit the resolved files and push the branch (`git push`).
   4. Wait for the CI pipeline to run again and ensure the merged logic didn't break any tests.
+
+### 8. PR Merging Workflow
+- **Merging:** When the user explicitly approves PRs for merging, the main agent will spawn a `pr_merger` subagent.
+- **Role:** The `pr_merger` subagent will iterate through the approved PR numbers and attempt to merge them (`gh pr merge <pr_number> --merge`). If a merge conflict blocks the merge, it will report back to the main agent.
+- **Handling Merge Failures:** If `pr_merger` reports a conflict, the main agent will spawn a `pr_fixer` specifically to resolve the conflict on that PR branch, wait for CI to pass, and then re-attempt the merge.
