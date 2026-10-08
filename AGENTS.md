@@ -42,3 +42,8 @@ We are building a portfolio piece for an **AI Engineer / AI Agent Developer** ro
 - **Makefile:** Maintain a `Makefile` at the root of the project to encapsulate common operational commands (e.g., `make up` for Docker, `make db-seed`, `make test-e2e`).
 - **E2E Feature Tests (Evals):** Every major feature must include E2E tests / evaluations to prove it works before it is merged.
 - **PR Template:** Always use the `.github/PULL_REQUEST_TEMPLATE.md` to ensure standardized PR descriptions.
+
+### 6. Automated PR Monitoring Workflow
+- **PR Creation:** After creating a PR, the main agent should immediately spawn a `pr_fixer` subagent (using `invoke_subagent` and `gh pr checks --watch`).
+- **PR Fixer Subagent Role:** The `pr_fixer` subagent will monitor the CI pipeline and PR review comments. If the CI fails or the user leaves review comments, the subagent will automatically checkout the PR branch, fix the code, commit, push, and resume monitoring. It reports success back to the main agent once the PR is entirely green and ready to merge.
+- **Agent Parallelism:** While the `pr_fixer` is monitoring and fixing a PR, the main agent can immediately proceed to the next Epic or task without waiting.
