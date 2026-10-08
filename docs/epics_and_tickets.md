@@ -47,9 +47,9 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🌐 Epic 3: API & E2E Verification
 *Goal: Expose the system to the outside world and verify the entire pipeline.*
 
-- [ ] **Ticket 3.1: Webhook Entry Point**
+- [x] **Ticket 3.1: Webhook Entry Point**
   - Create `src/api/webhook.ts` (Express/FastAPI equivalent route).
   - *Dependencies:* Epic 2.
-- [ ] **Ticket 3.2: E2E Eval Testing**
+- [x] **Ticket 3.2: E2E Eval Testing**
   - Write the final `src/__tests__/e2e/claim_resolution.test.ts` to trigger a webhook with a mock claim and assert the final DB state.
   - *Dependencies:* Epic 1, Epic 2, Ticket 3.1.

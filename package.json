@@ -32,16 +32,20 @@
     "@langchain/openai": "^1.6.2",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "dotenv": "^18.0.6",
+    "express": "^5.2.1",
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
     "@typescript-eslint/eslint-plugin": "^8.71.1",
     "@typescript-eslint/parser": "^8.71.1",
     "eslint": "^8.57.1",
     "jest": "^30.5.2",
+    "supertest": "^7.3.1",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
