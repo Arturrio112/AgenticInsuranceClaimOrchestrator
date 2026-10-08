@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { query } from "../../db/client.js";
+import { query } from "../../db/client";
 
 export function registerGetPolicyTool(server: McpServer) {
   server.tool(
