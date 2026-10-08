@@ -47,3 +47,11 @@ We are building a portfolio piece for an **AI Engineer / AI Agent Developer** ro
 - **PR Creation:** After creating a PR, the main agent should immediately spawn a `pr_fixer` subagent (using `invoke_subagent` and `gh pr checks --watch`).
 - **PR Fixer Subagent Role:** The `pr_fixer` subagent will monitor the CI pipeline and PR review comments. If the CI fails or the user leaves review comments, the subagent will automatically checkout the PR branch, fix the code, commit, push, and resume monitoring. It reports success back to the main agent once the PR is entirely green and ready to merge.
 - **Agent Parallelism:** While the `pr_fixer` is monitoring and fixing a PR, the main agent can immediately proceed to the next Epic or task without waiting.
+
+### 7. Merge Conflict Resolution Workflow
+- **Detection:** The `pr_fixer` subagent must periodically check if the PR is in a conflicting state with `main` (using `gh pr view <pr_number> --json mergeStateStatus`).
+- **Resolution:** If a merge conflict occurs because another agent's PR was merged first, the `pr_fixer` will:
+  1. Fetch and merge the latest `main` into the PR branch (`git fetch origin main && git merge origin/main`).
+  2. Identify the conflicting files and resolve the git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) intelligently, ensuring neither agent's logic is lost.
+  3. Commit the resolved files and push the branch (`git push`).
+  4. Wait for the CI pipeline to run again and ensure the merged logic didn't break any tests.
