@@ -1,10 +1,20 @@
-.PHONY: up down db-seed test test-e2e
+.PHONY: up down build logs db-seed test test-e2e clean
 
 up:
 	docker-compose up -d
 
+build:
+	docker-compose up -d --build
+
 down:
 	docker-compose down
+
+clean:
+	docker-compose down -v
+	rm -rf dist node_modules
+
+logs:
+	docker-compose logs -f
 
 db-seed:
 	npx ts-node src/db/seed.ts
