@@ -35,7 +35,8 @@
     "express": "^5.2.1",
     "langfuse": "^3.39.2",
     "langfuse-langchain": "^3.39.2",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "langchain": "^1.5.16"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -51,5 +52,8 @@
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "langchain": "^1.5.16"
   }
 }
