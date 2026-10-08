@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import { app as graphApp } from "../agent/graph";
 import { HumanMessage } from "@langchain/core/messages";
+import { CallbackHandler } from "langfuse-langchain";
+import { logger } from "../utils/logger";
 import jwt from "jsonwebtoken";
 
 import path from "path";
@@ -49,16 +51,24 @@ app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, 
             claim_id: typeof claim_id === "string" ? parseInt(claim_id, 10) : claim_id
         };
 
-        const result = await graphApp.invoke(initialState);
+        logger.info(`Processing claim request`, { claim_id });
+        const langfuseHandler = new CallbackHandler({
+            publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+            secretKey: process.env.LANGFUSE_SECRET_KEY,
+            baseUrl: process.env.LANGFUSE_BASEURL || "https://cloud.langfuse.com"
+        });
+
+        const result = await graphApp.invoke(initialState, { callbacks: [langfuseHandler] });
         
         const messages = result.messages;
         const lastMessage = messages[messages.length - 1];
         
+        logger.info(`Claim processed successfully`, { claim_id });
         res.json({
             content: lastMessage.content
         });
     } catch (error) {
-        console.error("Error processing claim via webhook:", error);
+        logger.error("Error processing claim via webhook:", error);
         res.status(500).json({ error: "Internal server error while processing claim" });
     }
 });
