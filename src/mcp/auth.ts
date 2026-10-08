@@ -5,7 +5,7 @@ export function validateToken(token: string): boolean {
   try {
     jwt.verify(token, secret);
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

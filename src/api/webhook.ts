@@ -30,7 +30,7 @@ const validateJWT = (req: Request, res: Response, next: NextFunction): void => {
     try {
         jwt.verify(token, JWT_SECRET);
         next();
-    } catch (err) {
+    } catch {
         res.status(401).json({ error: "Invalid token" });
     }
 };
