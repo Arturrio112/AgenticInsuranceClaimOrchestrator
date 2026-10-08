@@ -30,15 +30,15 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🧠 Epic 2: LangGraph Orchestration Layer
 *Goal: Create the agentic brain that reasons about claims and triggers our MCP tools.*
 
-- [ ] **Ticket 2.1: State & Prompts Definition**
+- [x] **Ticket 2.1: State & Prompts Definition**
   - Create `src/agent/state.ts` (Graph channels/state).
   - Create `src/agent/prompts.ts` (System instructions).
   - *Dependencies:* None.
-- [ ] **Ticket 2.2: Nodes Implementation**
+- [x] **Ticket 2.2: Nodes Implementation**
   - Create `src/agent/nodes/llm_node.ts` (Ollama integration).
   - Create `src/agent/nodes/tool_node.ts` (Tool execution logic).
   - *Dependencies:* Ticket 2.1.
-- [ ] **Ticket 2.3: Graph Assembly & Routing**
+- [x] **Ticket 2.3: Graph Assembly & Routing**
   - Create `src/agent/graph.ts` (Connecting nodes with conditional routing).
   - *Dependencies:* Ticket 2.2.
 
