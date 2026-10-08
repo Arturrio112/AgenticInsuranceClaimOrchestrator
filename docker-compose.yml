@@ -3,10 +3,11 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
+    env_file: .env
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: insurance_db
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password123}
+      POSTGRES_DB: ${DB_NAME:-insurance_db}
     ports:
       - "5432:5432"
     volumes:
@@ -33,17 +34,11 @@ services:
       - "3000:3000"
     depends_on:
       - postgres
+    env_file: .env
     environment:
+      # Override DB_HOST to point to the postgres container network alias
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=admin
-      - DB_PASSWORD=password123
-      - DB_NAME=insurance_db
-      - DATABASE_URL=postgresql://admin:password123@postgres:5432/insurance_db
-      - JWT_SECRET=supersecret
-      - PORT=3000
-      - LLM_PROVIDER=ollama
-      - LLM_MODEL=llama3.1
+      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-insurance_db}
     networks:
       - app-network
 
