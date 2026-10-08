@@ -5,6 +5,7 @@ import { createTables } from '../../db/schema';
 
 // We mock the LLM node to simulate an AI agent deciding to flag the claim
 jest.mock('../../agent/nodes/llm_node', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { AIMessage } = require('@langchain/core/messages');
     let callCount = 0;
     

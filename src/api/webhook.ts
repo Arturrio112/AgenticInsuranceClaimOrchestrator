@@ -9,7 +9,7 @@ interface ClaimRequest {
     claim_id?: number | string;
 }
 
-app.post("/claim", async (req: Request<{}, {}, ClaimRequest>, res: Response): Promise<void> => {
+app.post("/claim", async (req: Request<Record<string, never>, any, ClaimRequest>, res: Response): Promise<void> => {
     try {
         const { claim_id } = req.body;
         
