@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import * as dotenv from 'dotenv';
 
+process.env.DOTENV_QUIET = 'true';
 dotenv.config();
 
 export const pool = new Pool(
