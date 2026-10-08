@@ -51,13 +51,16 @@ app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, 
         };
 
         logger.info(`Processing claim request`, { claim_id });
-        const langfuseHandler = new CallbackHandler({
-            publicKey: process.env.LANGFUSE_PUBLIC_KEY,
-            secretKey: process.env.LANGFUSE_SECRET_KEY,
-            baseUrl: process.env.LANGFUSE_BASEURL || "https://cloud.langfuse.com"
-        });
+        const callbacks = [];
+        if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
+            callbacks.push(new CallbackHandler({
+                publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+                secretKey: process.env.LANGFUSE_SECRET_KEY,
+                baseUrl: process.env.LANGFUSE_BASEURL || "https://cloud.langfuse.com"
+            }));
+        }
 
-        const result = await graphApp.invoke(initialState, { callbacks: [langfuseHandler] });
+        const result = await graphApp.invoke(initialState, { callbacks });
         
         const messages = result.messages;
         const lastMessage = messages[messages.length - 1];
