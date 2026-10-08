@@ -53,3 +53,53 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 - [x] **Ticket 3.2: E2E Eval Testing**
   - Write the final `src/__tests__/e2e/claim_resolution.test.ts` to trigger a webhook with a mock claim and assert the final DB state.
   - *Dependencies:* Epic 1, Epic 2, Ticket 3.1.
+
+---
+
+## 🔍 Epic 7: Duplication Triage
+*Goal: Automatically detect and triage duplicate claims to prevent double payouts.*
+
+- [ ] **Ticket 7.1: Duplicate Detection Tool**
+  - Implement a new MCP tool to query the database for similar claims (e.g., matching user, time window, and damage type).
+- [ ] **Ticket 7.2: LangGraph Integration**
+  - Update the agent prompts and graph to first check for duplicates before proceeding with coverage evaluation.
+
+---
+
+## 🛡️ Epic 8: Fraud Scoring
+*Goal: Analyze claims for potential fraud using heuristics or external ML models.*
+
+- [ ] **Ticket 8.1: Fraud Assessment Node/Tool**
+  - Implement a mechanism (either a specialized LangGraph node or an MCP tool calling a fraud API) to score the claim's fraud risk.
+- [ ] **Ticket 8.2: Fraud Routing Logic**
+  - Update `src/agent/graph.ts` to automatically flag high-fraud-risk claims for manual review.
+
+---
+
+## 📝 Epic 9: Descriptive End Product & Source Linking
+*Goal: Ensure the AI's final decision is highly transparent and cites the specific business rules used.*
+
+- [ ] **Ticket 9.1: Citation Generation**
+  - Update the LLM node prompt to require structured output containing the exact `coverage_rules` or `policies` IDs used in the decision.
+- [ ] **Ticket 9.2: UI/API Response Enhancement**
+  - Update the webhook response schema and the UI to clearly display the "Source of Truth" linking back to the specific policy clauses.
+
+---
+
+## 🧑‍⚖️ Epic 10: Low Confidence Tagger & Human-in-the-loop
+*Goal: Tag ambiguous or complex claims for human review rather than auto-resolving them.*
+
+- [ ] **Ticket 10.1: Confidence Scoring**
+  - Implement structured output in the LLM decision step to include a `confidence_score` (0-100%).
+- [ ] **Ticket 10.2: Human Review Routing**
+  - Update the orchestration layer to flag the claim in the database with a `needs_human_review` tag if the confidence falls below a configured threshold.
+
+---
+
+## 📜 Epic 11: Audit Trail Logging
+*Goal: Maintain an immutable record of every step the AI took to reach a decision.*
+
+- [ ] **Ticket 11.1: Audit Table Creation**
+  - Create an `audit_logs` table in PostgreSQL to store the agent's thought process, tool invocations, and state transitions per claim.
+- [ ] **Ticket 11.2: Audit LangGraph Callback**
+  - Implement a LangGraph callback handler (similar to Langfuse) that writes the internal execution trace directly into the `audit_logs` table.
