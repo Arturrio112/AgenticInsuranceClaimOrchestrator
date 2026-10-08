@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claim Orchestrator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Submit Insurance Claim</h1>
+        <form id="claimForm">
+            <div class="form-group">
+                <label for="claim_id">Claim ID:</label>
+                <input type="text" id="claim_id" name="claim_id" required placeholder="Enter claim ID">
+            </div>
+            <!-- Optional Auth Header Input -->
+            <div class="form-group">
+                <label for="auth_token">Authorization Token (Optional):</label>
+                <input type="text" id="auth_token" name="auth_token" placeholder="Bearer <token>">
+            </div>
+            <button type="submit">Submit Claim</button>
+        </form>
+        <div id="result" class="result" style="display: none;"></div>
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

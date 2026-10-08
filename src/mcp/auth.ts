@@ -1,4 +1,11 @@
+import jwt from "jsonwebtoken";
+
 export function validateToken(token: string): boolean {
-  // Mock JWT validation for our internal MCP server
-  return token === "valid-mock-token";
+  const secret = process.env.JWT_SECRET || "supersecret";
+  try {
+    jwt.verify(token, secret);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
