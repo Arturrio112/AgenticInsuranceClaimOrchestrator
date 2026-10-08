@@ -36,6 +36,17 @@ const validateJWT = (req: Request, res: Response, next: NextFunction): void => {
     }
 };
 
+app.post("/login", (req: Request, res: Response): void => {
+    const { username, password } = req.body;
+
+    if (username === "admin" && password === "password123") {
+        const token = jwt.sign({ username }, JWT_SECRET);
+        res.json({ token });
+    } else {
+        res.status(401).json({ error: "Invalid credentials" });
+    }
+});
+
 app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, ClaimRequest>, res: Response): Promise<void> => {
     try {
         const { claim_id } = req.body;
