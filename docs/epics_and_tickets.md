@@ -59,10 +59,10 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 📊 Epic 4: Observability & Langfuse Integration
 *Goal: Instrument the agent with tracing and observability to monitor LLM performance, tool usage, and overall claim resolution times.*
 
-- [ ] **Ticket 4.1: Logger Setup**
+- [x] **Ticket 4.1: Logger Setup**
   - Create `src/utils/logger.ts` for standardized console logging.
   - *Dependencies:* None.
-- [ ] **Ticket 4.2: Langfuse Integration**
+- [x] **Ticket 4.2: Langfuse Integration**
   - Integrate Langfuse callback handlers into `src/agent/graph.ts` or `src/agent/nodes/llm_node.ts` to trace LLM calls.
   - *Dependencies:* Ticket 4.1.
 
