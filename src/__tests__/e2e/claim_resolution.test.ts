@@ -58,8 +58,10 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
 
     it('should trigger the webhook, run the graph, and update the DB state', async () => {
         // 1. Trigger the webhook
+        const token = require('jsonwebtoken').sign({ user: 'test_user' }, process.env.JWT_SECRET || 'supersecret');
         const response = await request(app)
             .post('/claim')
+            .set('Authorization', `Bearer ${token}`)
             .send({ claim_id: 1 })
             .expect(200);
             
@@ -71,5 +73,14 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
         expect(claimResult.rows.length).toBe(1);
         expect(claimResult.rows[0].status).toBe('flagged');
         expect(claimResult.rows[0].description).toContain('Flagged: Amount suspiciously high for this policy');
+    });
+
+    it('should reject requests without a valid Bearer token', async () => {
+        const response = await request(app)
+            .post('/claim')
+            .send({ claim_id: 1 })
+            .expect(401);
+
+        expect(response.body.error).toBe('Missing or invalid Bearer token');
     });
 });

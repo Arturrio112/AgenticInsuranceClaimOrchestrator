@@ -1,6 +1,7 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { app as graphApp } from "../agent/graph";
 import { HumanMessage } from "@langchain/core/messages";
+import jwt from "jsonwebtoken";
 
 const app = express();
 app.use(express.json());
@@ -9,7 +10,27 @@ interface ClaimRequest {
     claim_id?: number | string;
 }
 
-app.post("/claim", async (req: Request<Record<string, never>, any, ClaimRequest>, res: Response): Promise<void> => {
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+const validateJWT = (req: Request, res: Response, next: NextFunction): void => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.status(401).json({ error: "Missing or invalid Bearer token" });
+        return;
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        jwt.verify(token, JWT_SECRET);
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Invalid token" });
+    }
+};
+
+app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, ClaimRequest>, res: Response): Promise<void> => {
     try {
         const { claim_id } = req.body;
         
