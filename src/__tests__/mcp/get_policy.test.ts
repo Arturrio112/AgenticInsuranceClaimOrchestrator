@@ -1,10 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerGetPolicyTool } from "../../mcp/tools/get_policy.js";
-import { query } from "../../db/client.js";
+import { registerGetPolicyTool } from "../../mcp/tools/get_policy";
+import { query } from "../../db/client";
 
-jest.mock("../../db/client.js", () => ({
+jest.mock("../../db/client", () => ({
   query: jest.fn(),
 }));
+
 
 describe("get_policy tool", () => {
   let server: McpServer;
