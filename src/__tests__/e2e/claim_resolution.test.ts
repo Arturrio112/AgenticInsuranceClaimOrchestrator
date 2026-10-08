@@ -1,4 +1,5 @@
 import request from 'supertest';
+import jwt from 'jsonwebtoken';
 import { app } from '../../api/webhook';
 import { query, pool } from '../../db/client';
 import { createTables } from '../../db/schema';
@@ -58,7 +59,6 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
 
     it('should trigger the webhook, run the graph, and update the DB state', async () => {
         // 1. Trigger the webhook
-        const jwt = await import('jsonwebtoken');
         const token = jwt.sign({ user: 'test_user' }, process.env.JWT_SECRET || 'supersecret');
         const response = await request(app)
             .post('/claim')
