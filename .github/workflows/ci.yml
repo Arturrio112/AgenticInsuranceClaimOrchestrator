@@ -3,6 +3,8 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [ "main" ]
+  push:
+    branches: [ "main" ]
 
 jobs:
   build-and-test:
@@ -37,10 +39,15 @@ jobs:
     - name: Run Linter
       run: npm run lint
       
-    - name: Run Tests
+    - name: Type Check
+      run: npx tsc --noEmit
+      
+    - name: Run Unit Tests
       env:
         DATABASE_URL: postgresql://user:password@localhost:5432/insurance_db
       run: npm run test
       
-    - name: Type Check
-      run: npx tsc --noEmit
+    - name: Run E2E Tests
+      env:
+        DATABASE_URL: postgresql://user:password@localhost:5432/insurance_db
+      run: npm run test:e2e

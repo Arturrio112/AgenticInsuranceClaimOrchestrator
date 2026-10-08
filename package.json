@@ -7,8 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "test:e2e": "jest --config jest.config.js src/__tests__/e2e"
+    "test": "jest --config jest.config.js src/__tests__/mcp",
+    "test:e2e": "jest --config jest.config.js src/__tests__/e2e",
+    "lint": "eslint \"src/**/*.ts\""
   },
   "keywords": [],
   "author": "",
@@ -34,9 +35,12 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
     "@types/pg": "^8.23.1",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
+    "eslint": "^8.57.1",
     "jest": "^30.5.2",
     "ts-jest": "^29.4.14",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "^5.5.4"
   }
 }
