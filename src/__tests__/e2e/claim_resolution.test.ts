@@ -39,7 +39,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
     beforeAll(async () => {
         // Seed database with necessary test data
         await query(createTables);
-        await query('TRUNCATE TABLE claims, coverage_rules, policies RESTART IDENTITY CASCADE;');
+        await query('TRUNCATE TABLE audit_logs, claims, coverage_rules, policies RESTART IDENTITY CASCADE;');
         
         await query(`
             INSERT INTO policies (user_id, policy_number, status, type) VALUES

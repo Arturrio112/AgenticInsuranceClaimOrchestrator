@@ -7,7 +7,7 @@ async function seed() {
         await query(createTables);
         
         console.log('Clearing existing data...');
-        await query('TRUNCATE TABLE claims, coverage_rules, policies RESTART IDENTITY CASCADE;');
+        await query('TRUNCATE TABLE audit_logs, claims, coverage_rules, policies RESTART IDENTITY CASCADE;');
 
         console.log('Inserting mock policies...');
         await query(`
