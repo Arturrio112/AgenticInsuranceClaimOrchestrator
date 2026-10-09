@@ -18,6 +18,7 @@ The project is divided into three main domains:
 *   **Schema Definitions:** `src/db/schema.ts` (or `.sql` files in `/scripts/`) - Defines the `policies`, `coverage_rules`, and `claims` tables.
 *   **Database Client:** `src/db/client.ts` - The connection logic to PostgreSQL (using `pg` or an ORM like Prisma).
 *   **Seed Data:** `scripts/seed.ts` - Scripts to populate the database with mock insurance data.
+*   **Audit Trail:** `src/db/schema.ts` defines the append-only `audit_logs` table (trigger rejects UPDATE/DELETE); `src/db/audit_repository.ts` exposes only `insertAuditLog` and `getAuditLogsForClaim`.
 
 ### 2. MCP Server Layer (`/src/mcp/`)
 *Everything related to exposing tools to the LLM via Model Context Protocol.*
@@ -36,10 +37,12 @@ The project is divided into three main domains:
     *   `tool_node.ts` - The node that executes the MCP tools.
 *   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together.
 *   **Prompts:** `src/agent/prompts.ts` - System instructions for evaluating claims.
+*   **Audit Callback:** `src/agent/callbacks/audit_callback.ts` - `AuditCallbackHandler` that writes node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding).
 
 ### 4. API & Entry Points (`/src/api/`)
 *How the outside world triggers the workflow.*
 *   **Webhook Handler:** `src/api/webhook.ts` - Express/FastAPI route that receives the JSON claim payload and triggers the LangGraph agent.
+*   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected, returns the ordered audit entries for a claim.
 
 ### 5. Configuration & Observability (`/`)
 *   **Docker:** `docker-compose.yml` - Spins up Postgres.
