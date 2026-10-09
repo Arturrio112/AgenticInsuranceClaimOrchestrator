@@ -1,12 +1,13 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import { app as graphApp } from "../agent/graph";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { messageText } from "../agent/decision";
 import { ClaimRequest, ClaimResolutionResponse, ErrorResponse } from "./types";
-import jwt from "jsonwebtoken";
 import { CallbackHandler } from "langfuse-langchain";
 import { logger } from "../utils/logger";
 import path from "path";
+import { requireAuth } from "../auth/jwt";
+import { authRouter } from "./routes/auth";
 
 const app = express();
 app.use(express.json());
@@ -14,38 +15,9 @@ app.use(express.json());
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "../../public")));
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+app.use(authRouter);
 
-const validateJWT = (req: Request, res: Response, next: NextFunction): void => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(401).json({ error: "Missing or invalid Bearer token" });
-        return;
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    try {
-        jwt.verify(token, JWT_SECRET);
-        next();
-    } catch {
-        res.status(401).json({ error: "Invalid token" });
-    }
-};
-
-app.post("/login", (req: Request, res: Response): void => {
-    const { username, password } = req.body;
-
-    if (username === "admin" && password === "password123") {
-        const token = jwt.sign({ username }, JWT_SECRET);
-        res.json({ token });
-    } else {
-        res.status(401).json({ error: "Invalid credentials" });
-    }
-});
-
-app.post("/claim", validateJWT, async (
+app.post("/claim", requireAuth, async (
     req: Request<Record<string, never>, ClaimResolutionResponse | ErrorResponse, ClaimRequest>,
     res: Response<ClaimResolutionResponse | ErrorResponse>
 ): Promise<void> => {

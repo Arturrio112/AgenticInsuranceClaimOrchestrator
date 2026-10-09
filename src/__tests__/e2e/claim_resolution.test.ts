@@ -1,10 +1,10 @@
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
 import { ClaimResolutionResponse } from '../../api/types';
 import { query, pool } from '../../db/client';
 import { createTables } from '../../db/schema';
+import { signToken } from '../../auth/jwt';
 
 /**
  * Structured decision the fake model returns for the current test.
@@ -51,9 +51,9 @@ jest.mock('../../agent/model', () => {
     };
 });
 
-const token = jwt.sign({ user: 'test_user' }, process.env.JWT_SECRET || 'supersecret');
-
 function postClaim(claimId: number) {
+    // Signed with JWT_SECRET from the environment (no fallback secret).
+    const token = signToken({ sub: 'test_user' });
     return request(app)
         .post('/claim')
         .set('Authorization', `Bearer ${token}`)
