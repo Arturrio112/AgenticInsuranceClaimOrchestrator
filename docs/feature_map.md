@@ -27,7 +27,7 @@ The project is divided into three main domains:
     *   `get_policy.ts` - Tool to fetch active policy details.
     *   `check_coverage.ts` - Tool to fetch business rules for damage types.
     *   `flag_review.ts` - Tool to mutate claim status in the DB.
-*   **Authentication:** `src/mcp/auth.ts` - Simulated JWT/Entra ID validation middleware.
+*   **Authentication:** `src/mcp/auth.ts` - Thin MCP-side wrapper that delegates token validation to the shared `src/auth/jwt.ts` module.
 
 ### 3. Orchestration Layer (`/src/agent/`)
 *Everything related to LangGraph and the LLM workflow.*
@@ -41,13 +41,20 @@ The project is divided into three main domains:
 
 ### 4. API & Entry Points (`/src/api/`)
 *How the outside world triggers the workflow.*
-*   **Webhook Handler:** `src/api/webhook.ts` - Express/FastAPI route that receives the JSON claim payload and triggers the LangGraph agent.
-*   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected, returns the ordered audit entries for a claim.
+*   **Webhook Handler:** `src/api/webhook.ts` - Express app (exported as `app`) with the JWT-protected `POST /claim` route that triggers the LangGraph agent.
+*   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected (`requireAuth`), returns the ordered audit entries for a claim.
+*   **Login Route:** `src/api/routes/auth.ts` - `POST /login`; validates the body (400), checks credentials (401) and issues a JWT.
+
+### 4a. Authentication (`/src/auth/`)
+*Single shared auth module used by both the API and the MCP server.*
+*   **JWT:** `src/auth/jwt.ts` - Loads `JWT_SECRET` (required, no fallback) and `JWT_EXPIRES_IN` (default `1h`); exposes `signToken`, `verifyToken` (typed payload or `null`, HS256 only) and the Express `requireAuth` middleware.
+*   **Credentials:** `src/auth/credentials.ts` - Compares `/login` input with `AUTH_USERNAME` / `AUTH_PASSWORD` using `crypto.timingSafeEqual`.
+*   **Tests:** `src/__tests__/auth/` - Unit tests for token handling, the middleware and `/login` (no DB or LLM needed).
 
 ### 5. Configuration & Observability (`/`)
 *   **Docker:** `docker-compose.yml` - Spins up Postgres.
 *   **Observability:** `src/utils/logger.ts` or Langfuse configuration injected into the LangGraph setup.
-*   **Environment Variables:** `.env` (Ignored in Git) - Stores DB credentials and Langfuse API keys.
+*   **Environment Variables:** `.env` (Ignored in Git) - Stores DB credentials, Langfuse API keys and auth settings (`JWT_SECRET`, `JWT_EXPIRES_IN`, `AUTH_USERNAME`, `AUTH_PASSWORD`). See `.env.example`.
 
 ---
 

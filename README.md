@@ -46,6 +46,24 @@ Ensure Ollama is running locally and the appropriate model is pulled (e.g., `lla
 ollama pull llama3.1
 ```
 
+#### Authentication settings
+The API refuses to start unless these are set in `.env` (there are no built-in defaults):
+
+| Variable | Purpose |
+| --- | --- |
+| `JWT_SECRET` | Secret used to sign and verify JWTs (HS256). Use a long random value, e.g. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. |
+| `JWT_EXPIRES_IN` | Token lifetime, in seconds or as a duration (`15m`, `1h`, `7d`). Defaults to `1h`. |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | Credentials accepted by `POST /login`. |
+
+Get a token and call the protected endpoint:
+```bash
+TOKEN=$(curl -s -X POST localhost:3000/login -H 'Content-Type: application/json' \
+  -d '{"username":"<AUTH_USERNAME>","password":"<AUTH_PASSWORD>"}' | jq -r .token)
+curl -X POST localhost:3000/claim -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"claim_id":1}'
+```
+`/login` returns `400` for a malformed body and `401` for wrong credentials; `/claim` returns `401` without a valid, unexpired token. The API and the MCP server share one auth module (`src/auth/jwt.ts`).
+
 ### 2. Run the Application using Docker Compose
 The project uses Docker Compose to orchestrate the Node.js application, PostgreSQL database, and PgAdmin.
 ```bash

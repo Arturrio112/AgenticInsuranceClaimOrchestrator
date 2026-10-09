@@ -71,7 +71,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🔒 Epic 5: Security & JWT Validation
 *Goal: Secure the MCP server and Webhook API using JWT authentication.*
 
-- [ ] **Ticket 5.1: API Authentication Middleware**
+- [x] **Ticket 5.1: API Authentication Middleware**
   - Implement JWT validation in `src/api/webhook.ts` and `src/mcp/auth.ts` to ensure only authorized clients can trigger the claim resolution workflow.
   - *Dependencies:* None.
 

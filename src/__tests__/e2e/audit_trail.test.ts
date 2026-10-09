@@ -1,8 +1,8 @@
 import request from 'supertest';
-import jwt from 'jsonwebtoken';
 import { app } from '../../api/webhook';
 import { query, pool } from '../../db/client';
 import { createTables, AuditLog } from '../../db/schema';
+import { signToken } from '../../auth/jwt';
 
 // Mock the LLM node: first call asks for flag_review, second call returns a summary.
 jest.mock('../../agent/nodes/llm_node', () => {
@@ -31,7 +31,8 @@ jest.mock('../../agent/nodes/llm_node', () => {
 });
 
 describe('E2E: Audit trail for claim processing', () => {
-    const token = jwt.sign({ user: 'test_user' }, process.env.JWT_SECRET || 'supersecret');
+    // Signed with JWT_SECRET from the environment (no fallback secret).
+    const token = signToken({ sub: 'test_user' });
 
     beforeAll(async () => {
         // Running the schema twice proves it is re-runnable (CREATE OR REPLACE / DROP TRIGGER IF EXISTS).
