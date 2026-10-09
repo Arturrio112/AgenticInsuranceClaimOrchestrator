@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from "express";
 import { app as graphApp } from "../agent/graph";
-import { HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { messageText } from "../agent/decision";
+import { ClaimRequest, ClaimResolutionResponse, ErrorResponse } from "./types";
 import jwt from "jsonwebtoken";
 import { CallbackHandler } from "langfuse-langchain";
 import { logger } from "../utils/logger";
@@ -11,10 +13,6 @@ app.use(express.json());
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, "../../public")));
-
-interface ClaimRequest {
-    claim_id?: number | string;
-}
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 
@@ -47,21 +45,30 @@ app.post("/login", (req: Request, res: Response): void => {
     }
 });
 
-app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, ClaimRequest>, res: Response): Promise<void> => {
+app.post("/claim", validateJWT, async (
+    req: Request<Record<string, never>, ClaimResolutionResponse | ErrorResponse, ClaimRequest>,
+    res: Response<ClaimResolutionResponse | ErrorResponse>
+): Promise<void> => {
     try {
         const { claim_id } = req.body;
-        
+
         if (!claim_id) {
             res.status(400).json({ error: "claim_id is required in the request body" });
             return;
         }
 
+        const claimId = typeof claim_id === "string" ? Number(claim_id) : claim_id;
+        if (!Number.isInteger(claimId) || claimId <= 0) {
+            res.status(400).json({ error: "claim_id must be a positive integer" });
+            return;
+        }
+
         const initialState = {
-            messages: [new HumanMessage(`Please process claim ${claim_id}.`)],
-            claim_id: typeof claim_id === "string" ? parseInt(claim_id, 10) : claim_id
+            messages: [new HumanMessage(`Please investigate claim ${claimId}.`)],
+            claim_id: claimId,
         };
 
-        logger.info(`Processing claim request`, { claim_id });
+        logger.info(`Processing claim request`, { claim_id: claimId });
         const callbacks = [];
         if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
             callbacks.push(new CallbackHandler({
@@ -72,14 +79,25 @@ app.post("/claim", validateJWT, async (req: Request<Record<string, never>, any, 
         }
 
         const result = await graphApp.invoke(initialState, { callbacks });
-        
-        const messages = result.messages;
-        const lastMessage = messages[messages.length - 1];
-        
-        logger.info(`Claim processed successfully`, { claim_id });
-        res.json({
-            content: lastMessage.content
-        });
+
+        if (!result.claim) {
+            res.status(404).json({ error: `Claim ${claimId} not found` });
+            return;
+        }
+        if (!result.decision || !result.claim_status) {
+            throw new Error("Graph finished without a persisted decision");
+        }
+
+        const lastAgentMessage = [...result.messages].reverse().find((m) => AIMessage.isInstance(m));
+        const response: ClaimResolutionResponse = {
+            claim_id: claimId,
+            status: result.claim_status,
+            decision: result.decision,
+            summary: lastAgentMessage ? messageText(lastAgentMessage.content) : "",
+        };
+
+        logger.info(`Claim processed successfully`, { claim_id: claimId, status: response.status });
+        res.json(response);
     } catch (error) {
         logger.error("Error processing claim via webhook:", error);
         res.status(500).json({ error: "Internal server error while processing claim" });

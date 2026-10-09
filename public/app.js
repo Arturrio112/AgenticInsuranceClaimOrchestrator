@@ -61,7 +61,16 @@ document.getElementById('claimForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            resultDiv.textContent = typeof data.content === 'string' ? data.content : JSON.stringify(data.content);
+            // Minimal rendering of ClaimResolutionResponse (src/api/types.ts); richer UI is Ticket 7.2.
+            const d = data.decision || {};
+            const c = d.citations || {};
+            resultDiv.textContent = [
+                `Status: ${data.status}`,
+                `Decision: ${d.decision} (confidence ${d.confidence_score}/100)`,
+                `Reasoning: ${d.reasoning}`,
+                `Cited policy: ${c.policy_number || c.policy_id || 'none'}; coverage rules: ${(c.coverage_rule_ids || []).join(', ') || 'none'}`,
+                `Agent summary: ${data.summary}`,
+            ].join('\n');
             resultDiv.style.display = 'block';
         } else {
             errorDiv.textContent = data.error || 'An error occurred';
