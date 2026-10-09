@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js src/__tests__/mcp src/__tests__/auth",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --testPathIgnorePatterns /node_modules/ /e2e/",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js src/__tests__/e2e",
     "lint": "eslint \"src/**/*.ts\""
   },
@@ -36,10 +36,11 @@
     "dotenv": "^18.0.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "langchain": "^1.5.16",
     "langfuse": "^3.39.2",
     "langfuse-langchain": "^3.39.2",
-    "langchain": "^1.5.16",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

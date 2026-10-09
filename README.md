@@ -79,6 +79,30 @@ npx ts-node src/db/seed.ts
 ```
 *(You may also use `make db-seed` if configured in the Makefile).*
 
+## Claim Decisions
+
+`POST /claim` (JWT-protected) runs the agent and returns a structured, cited decision:
+
+```json
+{
+  "claim_id": 1,
+  "status": "approved",
+  "decision": {
+    "decision": "approve",
+    "reasoning": "Policy POL-AUTO-12345 is active and the 1500 collision claim is within the 50000 limit.",
+    "confidence_score": 92,
+    "citations": { "policy_id": 1, "policy_number": "POL-AUTO-12345", "coverage_rule_ids": [1] },
+    "fallback": false
+  },
+  "summary": "Investigation complete. ..."
+}
+```
+
+- `status` is one of `approved`, `rejected`, `flagged`, or `needs_human_review`. Any decision with `confidence_score` below `CONFIDENCE_THRESHOLD` (default `70`) goes to `needs_human_review`.
+- Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
+- If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
+- The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
+
 ## Future Improvements
 - **Duplication Triage:** Automatically detect and triage duplicate claims (using vector similarity or SQL) to prevent double payouts.
 - **Fraud Scoring:** Analyze claims for potential fraud using ML heuristics or 3rd-party risk assessment APIs before auto-approving them.

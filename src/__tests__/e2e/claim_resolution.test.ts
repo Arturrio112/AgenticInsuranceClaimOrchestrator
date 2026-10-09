@@ -1,80 +1,165 @@
 import request from 'supertest';
+import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
+import { ClaimResolutionResponse } from '../../api/types';
 import { query, pool } from '../../db/client';
 import { createTables } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
 
-// We mock the LLM node to simulate an AI agent deciding to flag the claim
-jest.mock('../../agent/nodes/llm_node', () => {
+/**
+ * Structured decision the fake model returns for the current test.
+ * (Variables referenced inside jest.mock factories must be prefixed with `mock`.)
+ */
+let mockDecision: unknown = null;
+
+/**
+ * Replace only the LLM provider. Every graph node (load_claim, agent, tools,
+ * decide, persist) runs for real against Postgres.
+ *  - Agent model: first turn calls get_policy + check_coverage, then summarises.
+ *  - Structured-output model: returns `mockDecision`.
+ */
+jest.mock('../../agent/model', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AIMessage } = require('@langchain/core/messages');
-    let callCount = 0;
-    
-    return {
-        llmNode: jest.fn().mockImplementation(async (state: any) => {
-            callCount++;
-            const claimId = state.claim_id || 1;
-            
-            if (callCount === 1) {
-                // First invocation: the LLM decides to call the flag_review tool
-                const msg = new AIMessage({
-                    content: "",
-                    tool_calls: [{
-                        name: "flag_review",
-                        args: { claim_id: claimId, reason: "Amount suspiciously high for this policy" },
-                        id: "call_123"
-                    }]
+    const { AIMessage, ToolMessage } = require('@langchain/core/messages');
+
+    const agentModel = {
+        invoke: jest.fn(async (messages: BaseMessage[]) => {
+            const hasToolResults = messages.some((m) => ToolMessage.isInstance(m));
+            if (!hasToolResults) {
+                return new AIMessage({
+                    content: '',
+                    tool_calls: [
+                        { name: 'get_policy', args: { policy_number: 'POL-TEST-001' }, id: 'call_policy' },
+                        { name: 'check_coverage', args: { policy_type: 'auto', damage_type: 'collision' }, id: 'call_coverage' },
+                    ],
                 });
-                return { messages: [msg] };
-            } else {
-                // Second invocation: the LLM provides its final summary after the tool execution
-                const msg = new AIMessage("Investigation complete. The claim was flagged for review.");
-                return { messages: [msg] };
             }
-        })
+            return new AIMessage('Investigation complete. Policy POL-TEST-001 is active and collision is covered.');
+        }),
+    };
+
+    const decisionModel = { invoke: jest.fn(async () => mockDecision) };
+
+    const chatModel = {
+        bindTools: jest.fn(() => agentModel),
+        withStructuredOutput: jest.fn(() => decisionModel),
+    };
+
+    return {
+        createChatModel: jest.fn(() => chatModel),
+        getChatModel: jest.fn(() => chatModel),
     };
 });
 
+function postClaim(claimId: number) {
+    // Signed with JWT_SECRET from the environment (no fallback secret).
+    const token = signToken({ sub: 'test_user' });
+    return request(app)
+        .post('/claim')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ claim_id: claimId });
+}
+
 describe('E2E Eval Testing: Claim Resolution Workflow', () => {
+    const originalThreshold = process.env.CONFIDENCE_THRESHOLD;
+
     beforeAll(async () => {
-        // Seed database with necessary test data
+        process.env.CONFIDENCE_THRESHOLD = '70';
         await query(createTables);
         await query('TRUNCATE TABLE claims, coverage_rules, policies RESTART IDENTITY CASCADE;');
-        
+
         await query(`
             INSERT INTO policies (user_id, policy_number, status, type) VALUES
             ('test_user', 'POL-TEST-001', 'active', 'auto');
         `);
-        
-        // Insert a mock pending claim
+        await query(`
+            INSERT INTO coverage_rules (policy_type, damage_type, max_coverage_amount, conditions) VALUES
+            ('auto', 'collision', 50000.00, 'Requires police report if over $1000');
+        `);
         await query(`
             INSERT INTO claims (id, policy_id, claim_amount, damage_type, status, description) VALUES
-            (1, 1, 500000.00, 'collision', 'pending', 'Test collision claim')
+            (1, 1, 1500.00, 'collision', 'pending', 'Fender bender in parking lot'),
+            (2, 1, 49000.00, 'collision', 'pending', 'Total loss, no police report attached')
         `);
     });
 
     afterAll(async () => {
+        if (originalThreshold === undefined) delete process.env.CONFIDENCE_THRESHOLD;
+        else process.env.CONFIDENCE_THRESHOLD = originalThreshold;
         await pool.end();
     });
 
-    it('should trigger the webhook, run the graph, and update the DB state', async () => {
-        // 1. Trigger the webhook
-        // Signed with JWT_SECRET from the environment (no fallback secret).
-        const token = signToken({ sub: 'test_user' });
-        const response = await request(app)
-            .post('/claim')
-            .set('Authorization', `Bearer ${token}`)
-            .send({ claim_id: 1 })
-            .expect(200);
-            
-        expect(response.body.content).toContain('Investigation complete');
+    it('applies a high-confidence decision and stores verified citations', async () => {
+        mockDecision = {
+            decision: 'approve',
+            reasoning: 'Policy POL-TEST-001 is active and the 1500 collision claim is within the 50000 limit.',
+            confidence_score: 92,
+            // 999 is not returned by any tool and must be dropped
+            citations: { policy_id: 1, policy_number: 'POL-TEST-001', coverage_rule_ids: [1, 999] },
+        };
 
-        // 2. Assert the final DB state
-        const claimResult = await query('SELECT status, description FROM claims WHERE id = 1');
-        
-        expect(claimResult.rows.length).toBe(1);
-        expect(claimResult.rows[0].status).toBe('flagged');
-        expect(claimResult.rows[0].description).toContain('Flagged: Amount suspiciously high for this policy');
+        const response = await postClaim(1).expect(200);
+        const body = response.body as ClaimResolutionResponse;
+
+        expect(body).toEqual({
+            claim_id: 1,
+            status: 'approved',
+            decision: {
+                decision: 'approve',
+                reasoning: expect.stringContaining('within the 50000 limit'),
+                confidence_score: 92,
+                citations: { policy_id: 1, policy_number: 'POL-TEST-001', coverage_rule_ids: [1] },
+                fallback: false,
+            },
+            summary: expect.stringContaining('Investigation complete'),
+        });
+
+        const { rows } = await query(
+            'SELECT status, ai_decision, decision_reasoning, confidence_score, cited_policy_id, cited_rule_ids, decided_at FROM claims WHERE id = 1'
+        );
+        expect(rows[0]).toMatchObject({
+            status: 'approved',
+            ai_decision: 'approve',
+            confidence_score: 92,
+            cited_policy_id: 1,
+            cited_rule_ids: [1],
+        });
+        expect(rows[0].decision_reasoning).toContain('within the 50000 limit');
+        expect(rows[0].decided_at).toBeInstanceOf(Date);
+    });
+
+    it('routes a low-confidence decision to needs_human_review', async () => {
+        mockDecision = {
+            decision: 'approve',
+            reasoning: 'Amount is within coverage but the required police report is missing.',
+            confidence_score: 45,
+            citations: { policy_id: 1, policy_number: 'POL-TEST-001', coverage_rule_ids: [1] },
+        };
+
+        const response = await postClaim(2).expect(200);
+        const body = response.body as ClaimResolutionResponse;
+
+        expect(body.status).toBe('needs_human_review');
+        expect(body.decision.decision).toBe('approve');
+        expect(body.decision.confidence_score).toBe(45);
+
+        const { rows } = await query('SELECT status, ai_decision, confidence_score FROM claims WHERE id = 2');
+        expect(rows[0]).toEqual({ status: 'needs_human_review', ai_decision: 'approve', confidence_score: 45 });
+    });
+
+    it('falls back to human review when the model returns malformed output', async () => {
+        mockDecision = { decision: 'definitely', confidence_score: 'high' };
+
+        const response = await postClaim(2).expect(200);
+        const body = response.body as ClaimResolutionResponse;
+
+        expect(body.status).toBe('needs_human_review');
+        expect(body.decision).toMatchObject({ decision: 'flag', confidence_score: 0, fallback: true });
+    });
+
+    it('returns 404 for an unknown claim', async () => {
+        const response = await postClaim(12345).expect(404);
+        expect(response.body.error).toBe('Claim 12345 not found');
     });
 
     it('should reject requests without a valid Bearer token', async () => {
