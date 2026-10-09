@@ -89,7 +89,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 📝 Epic 7: Descriptive End Product & Source Linking
 *Goal: Ensure the AI's final decision is highly transparent and cites the specific business rules used.*
 
-- [ ] **Ticket 7.1: Citation Generation**
+- [x] **Ticket 7.1: Citation Generation**
   - Update the LLM node prompt to require structured output containing the exact `coverage_rules` or `policies` IDs used in the decision.
 - [ ] **Ticket 7.2: UI/API Response Enhancement**
   - Update the webhook response schema and the UI to clearly display the "Source of Truth" linking back to the specific policy clauses.
@@ -99,9 +99,9 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🧑‍⚖️ Epic 8: Low Confidence Tagger & Human-in-the-loop
 *Goal: Tag ambiguous or complex claims for human review rather than auto-resolving them.*
 
-- [ ] **Ticket 8.1: Confidence Scoring**
+- [x] **Ticket 8.1: Confidence Scoring**
   - Implement structured output in the LLM decision step to include a `confidence_score` (0-100%).
-- [ ] **Ticket 8.2: Human Review Routing**
+- [x] **Ticket 8.2: Human Review Routing**
   - Update the orchestration layer to flag the claim in the database with a `needs_human_review` tag if the confidence falls below a configured threshold.
 
 ---
