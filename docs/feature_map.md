@@ -18,6 +18,7 @@ The project is divided into three main domains:
 *   **Schema Definitions:** `src/db/schema.ts` (or `.sql` files in `/scripts/`) - Defines the `policies`, `coverage_rules`, and `claims` tables.
 *   **Database Client:** `src/db/client.ts` - The connection logic to PostgreSQL (using `pg` or an ORM like Prisma).
 *   **Seed Data:** `scripts/seed.ts` - Scripts to populate the database with mock insurance data.
+*   **Audit Trail:** `src/db/schema.ts` defines the append-only `audit_logs` table (trigger rejects UPDATE/DELETE); `src/db/audit_repository.ts` exposes only `insertAuditLog` and `getAuditLogsForClaim`.
 
 ### 2. MCP Server Layer (`/src/mcp/`)
 *Everything related to exposing tools to the LLM via Model Context Protocol.*
@@ -42,10 +43,19 @@ The project is divided into three main domains:
     *   `persist_node.ts` - Writes status + decision columns to `claims`; low confidence -> `needs_human_review`.
 *   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together.
 *   **Prompts:** `src/agent/prompts.ts` - Agent system prompt, claim context formatter and decision prompt.
+*   **Audit Trail:** `src/agent/callbacks/audit/` - Records node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding). Import from the folder's `index.ts`.
+    *   `audit_callback_handler.ts` - `AuditCallbackHandler`: maps LangChain/LangGraph callback events to audit records.
+    *   `audit_writer.ts` - `AuditWriter`: step indexes, ordered write queue, swallows and logs DB failures.
+    *   `run_tracker.ts` - Remembers which graph node / tool each in-flight run belongs to.
+    *   `run_metadata.ts` - Reads node names and model/tool names from callback metadata and tags.
+    *   `llm_result.ts` - Builds the `llm_end` payload (messages, tool calls, provider output).
+    *   `json_safe.ts` - Converts payloads to JSONB-safe values (truncation, cycles, depth limit).
+    *   `types.ts` - Shared payload/metadata/run-context types.
 
 ### 4. API & Entry Points (`/src/api/`)
 *How the outside world triggers the workflow.*
 *   **Webhook Handler:** `src/api/webhook.ts` - Express app (exported as `app`) with the JWT-protected `POST /claim` route that triggers the LangGraph agent and returns a `ClaimResolutionResponse`.
+*   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected (`requireAuth`), returns the ordered audit entries for a claim.
 *   **API Types:** `src/api/types.ts` - Exported request/response interfaces (shared with the UI).
 *   **Login Route:** `src/api/routes/auth.ts` - `POST /login`; validates the body (400), checks credentials (401) and issues a JWT.
 
