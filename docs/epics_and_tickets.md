@@ -80,7 +80,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 💻 Epic 6: Simple Web UI
 *Goal: Create a simple frontend to interact with the insurance claim orchestrator.*
 
-- [ ] **Ticket 6.1: Frontend UI Application**
+- [x] **Ticket 6.1: Frontend UI Application**
   - Create a simple HTML/JS or React frontend (e.g. in a `public/` folder served by Express) where users can input a claim, submit it, and see the AI's response and decision.
   - *Dependencies:* Epic 5 (for auth if needed, or can be done in parallel).
 
@@ -91,7 +91,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 
 - [x] **Ticket 7.1: Citation Generation**
   - Update the LLM node prompt to require structured output containing the exact `coverage_rules` or `policies` IDs used in the decision.
-- [ ] **Ticket 7.2: UI/API Response Enhancement**
+- [x] **Ticket 7.2: UI/API Response Enhancement**
   - Update the webhook response schema and the UI to clearly display the "Source of Truth" linking back to the specific policy clauses.
 
 ---

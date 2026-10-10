@@ -2,41 +2,91 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>Claim Orchestrator</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%231d4f7c' d='M16 3l11 4.5v8c0 7-4.7 11.6-11 13.5C9.7 27.1 5 22.5 5 15.5v-8z'/%3E%3Cpath fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M11 16l3.5 3.5L21.5 12'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,800;1,400&display=swap">
+    <link rel="stylesheet" href="css/app.css">
+    <script type="module" src="js/main.mjs"></script>
 </head>
 <body>
-    <div class="container">
-        <div id="loginSection">
-            <h2>Login</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="masthead">
+        <div class="masthead-inner">
+            <div class="brand">
+                <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M16 3l11 4.5v8c0 7-4.7 11.6-11 13.5C9.7 27.1 5 22.5 5 15.5v-8z" />
+                    <path class="brand-tick" d="M11 16l3.5 3.5L21.5 12" />
+                </svg>
+                <div>
+                    <p class="brand-name">Claim Orchestrator</p>
+                    <p class="brand-tagline">An AI agent checks each insurance claim against its policy and coverage rules, then decides. Unsure cases go to a person.</p>
                 </div>
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
+            </div>
+            <button type="button" class="btn btn-quiet" id="sign-out" hidden>Sign out</button>
+        </div>
+    </header>
+
+    <main id="main">
+        <!-- Sign-in -->
+        <section class="signin" id="signin-view" aria-labelledby="signin-title" hidden>
+            <div class="signin-explainer">
+                <h1 class="signin-heading">Let an AI agent investigate insurance claims, and see exactly why it decided.</h1>
+                <p>Pick a pending claim and run an investigation. A local LLM looks up the policy, checks the coverage rules, and returns a verdict with its reasoning, a confidence score and the rules it relied on.</p>
+                <ol class="pipeline pipeline-compact" data-pipeline="static" aria-label="How the agent works"></ol>
+            </div>
+
+            <form class="signin-form" id="signin-form" novalidate>
+                <h2 id="signin-title">Sign in</h2>
+                <div class="field">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required>
                 </div>
-                <button type="submit">Login</button>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+                <p class="form-error" id="signin-error" role="alert" hidden></p>
+                <button type="submit" class="btn btn-primary btn-block" id="signin-submit">Sign in</button>
+                <p class="hint">Running the demo locally? The credentials are the <code>AUTH_USERNAME</code> and <code>AUTH_PASSWORD</code> values in your <code>.env</code> file (copy <code>.env.example</code> to create it).</p>
             </form>
-            <div id="loginError" class="error" style="display: none;"></div>
+        </section>
+
+        <!-- Console -->
+        <div class="console" id="console-view" hidden>
+            <section class="claims" aria-labelledby="claims-title">
+                <div class="claims-head">
+                    <h1 id="claims-title">Claims</h1>
+                    <button type="button" class="btn btn-quiet btn-small" id="refresh-claims">Refresh</button>
+                </div>
+                <p class="claims-counts" id="claims-counts"></p>
+                <div class="claims-body" id="claims-body" aria-busy="true"></div>
+            </section>
+
+            <section class="case" id="case" aria-labelledby="case-intro-title" tabindex="-1">
+                <div id="case-intro">
+                    <h2 id="case-intro-title" class="case-title">How a claim gets decided</h2>
+                    <p class="case-lede">Choose a claim from the list. The agent then works through five steps. You will see each step here while it runs, followed by the verdict and the policy rules behind it.</p>
+                </div>
+
+                <div id="case-claim" hidden></div>
+
+                <ol class="pipeline" id="pipeline" aria-label="Investigation steps"></ol>
+
+                <div class="run-bar" id="run-bar" hidden>
+                    <button type="button" class="btn btn-primary" id="run-button">Run AI investigation</button>
+                    <p class="run-note" id="run-note"></p>
+                </div>
+
+                <div class="result" id="result" tabindex="-1"></div>
+            </section>
         </div>
 
-        <div id="claimSection" style="display: none;">
-            <h2>Process Claim</h2>
-            <form id="claimForm">
-                <div class="form-group">
-                    <label for="claim_id">Claim ID:</label>
-                    <input type="text" id="claim_id" name="claim_id" required placeholder="Enter claim ID">
-                </div>
-                <button type="submit">Submit Claim</button>
-            </form>
-            <div id="result" class="result" style="display: none;"></div>
-            <div id="error" class="error" style="display: none;"></div>
-        </div>
-    </div>
-    <script src="app.js"></script>
+        <p class="sr-only" id="announcer" aria-live="polite" aria-atomic="true"></p>
+    </main>
 </body>
 </html>

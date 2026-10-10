@@ -59,7 +59,7 @@ The project is divided into three main domains:
 *   **API Types:** `src/api/types.ts` - Exported request/response interfaces (shared with the UI).
 *   **Login Route:** `src/api/routes/auth.ts` - `POST /login`; validates the body (400), checks credentials (401) and issues a JWT.
 *   **Claims Routes:** `src/api/routes/claims.ts` - JWT-protected `GET /claims` (all claims, by id) and `GET /claims/:id` (400 bad id, 404 unknown) returning `ClaimSummary`.
-*   **Decision Sources:** `src/api/sources.ts` - Resolves `decision.citations` to full policy / coverage-rule rows for the `sources` field of `POST /claim` (Ticket 7.2 API half).
+*   **Decision Sources:** `src/api/sources.ts` - Resolves `decision.citations` to full policy / coverage-rule rows for the `sources` field of `POST /claim` (Ticket 7.2 [x]; the UI renders it as the Source of Truth section in `public/js/result.mjs`).
 *   **Read Repositories:** `src/db/claims_repository.ts` (claims joined with policies) and `src/db/sources_repository.ts` (policies, coverage rules); parameterized queries, DECIMAL -> number, Date -> ISO 8601.
 
 ### 4a. Authentication (`/src/auth/`)
@@ -67,6 +67,15 @@ The project is divided into three main domains:
 *   **JWT:** `src/auth/jwt.ts` - Loads `JWT_SECRET` (required, no fallback) and `JWT_EXPIRES_IN` (default `1h`); exposes `signToken`, `verifyToken` (typed payload or `null`, HS256 only) and the Express `requireAuth` middleware.
 *   **Credentials:** `src/auth/credentials.ts` - Compares `/login` input with `AUTH_USERNAME` / `AUTH_PASSWORD` using `crypto.timingSafeEqual`.
 *   **Tests:** `src/__tests__/auth/` - Unit tests for token handling, the middleware and `/login` (no DB or LLM needed).
+
+### 4b. Web UI (`/public/`) - Ticket 6.1 [x]
+*Framework-free claims console served statically by Express. Plain HTML, CSS and browser ES modules; no build step.*
+*   **Page:** `public/index.html` - Sign-in view and the console (claims list + case panel).
+*   **Styles:** `public/css/app.css` - Design tokens, light/dark via `prefers-color-scheme`, responsive down to phone width.
+*   **Entry point:** `public/js/main.mjs` - State and wiring: sign-in, claims list, running an investigation, 401 -> back to sign-in.
+*   **API client:** `public/js/api.mjs` - `login`, `listClaims` (`GET /claims`), `investigateClaim` (`POST /claim`) with the JWT header.
+*   **View model:** `public/js/view-model.mjs` - Pure, DOM-free logic: status labels/tones, currency/date formatting, confidence bands vs. `CONFIDENCE_THRESHOLD`, Source of Truth card text, pipeline stage timing. Unit-tested in `src/__tests__/ui/viewModel.test.mjs` (native ESM under Jest).
+*   **Rendering:** `public/js/claims-list.mjs`, `public/js/pipeline.mjs`, `public/js/result.mjs`, helpers in `public/js/dom.mjs`, token storage in `public/js/session.mjs`.
 
 ### 5. Configuration & Observability (`/`)
 *   **Docker:** `docker-compose.yml` - Spins up Postgres.
