@@ -169,11 +169,7 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 "My car was stolen from the supermarket car park. My son said he would phone the police for me " +
                 "that weekend; I believe he did, but I don't know when, and I have no reference number.",
         ],
-        uncertainCause: [
-            () =>
-                "Thieves broke into the car overnight and took the built-in sat nav screen and a child seat. I'm " +
-                "not sure whether the child seat counts as part of the car or as my own belongings.",
-        ],
+        uncertainCause: [],
     },
     {
         policy_type: "home",
