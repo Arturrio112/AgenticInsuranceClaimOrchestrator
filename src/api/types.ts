@@ -22,6 +22,55 @@ export interface ClaimResolutionResponse {
     decision: ClaimDecision;
     /** The agent's free-text summary of its investigation. */
     summary: string;
+    /** The claim AFTER persistence (reflects the updated status). */
+    claim: ClaimSummary;
+    /** `decision.citations` resolved to full DB rows. Unknown IDs are silently dropped. */
+    sources: DecisionSources;
+}
+
+/**
+ * A claim joined with its policy, as returned by `GET /claims`, `GET /claims/:id`
+ * and `POST /claim`. Shared with the web UI.
+ */
+export interface ClaimSummary {
+    id: number;
+    policy_number: string | null;
+    policy_type: string | null;
+    /** pg returns DECIMAL as a string; the API always converts it to a number. */
+    claim_amount: number;
+    damage_type: string;
+    status: ClaimStatus;
+    description: string | null;
+    /** ISO 8601 timestamp. */
+    created_at: string;
+}
+
+/** Response body for `GET /claims` (ordered by id ascending). */
+export interface ClaimListResponse {
+    claims: ClaimSummary[];
+}
+
+/** A cited policy, resolved from the DB ("source of truth", Ticket 7.2). */
+export interface PolicySource {
+    id: number;
+    policy_number: string;
+    status: string;
+    type: string;
+}
+
+/** A cited coverage rule, resolved from the DB. */
+export interface CoverageRuleSource {
+    id: number;
+    policy_type: string;
+    damage_type: string;
+    max_coverage_amount: number;
+    conditions: string | null;
+}
+
+/** The decision's citations resolved to full DB rows. */
+export interface DecisionSources {
+    policy: PolicySource | null;
+    coverage_rules: CoverageRuleSource[];
 }
 
 export interface ErrorResponse {

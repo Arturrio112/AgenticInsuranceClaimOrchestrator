@@ -58,6 +58,9 @@ The project is divided into three main domains:
 *   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected (`requireAuth`), returns the ordered audit entries for a claim.
 *   **API Types:** `src/api/types.ts` - Exported request/response interfaces (shared with the UI).
 *   **Login Route:** `src/api/routes/auth.ts` - `POST /login`; validates the body (400), checks credentials (401) and issues a JWT.
+*   **Claims Routes:** `src/api/routes/claims.ts` - JWT-protected `GET /claims` (all claims, by id) and `GET /claims/:id` (400 bad id, 404 unknown) returning `ClaimSummary`.
+*   **Decision Sources:** `src/api/sources.ts` - Resolves `decision.citations` to full policy / coverage-rule rows for the `sources` field of `POST /claim` (Ticket 7.2 [x]; the UI renders it as the Source of Truth section in `public/js/result.mjs`).
+*   **Read Repositories:** `src/db/claims_repository.ts` (claims joined with policies) and `src/db/sources_repository.ts` (policies, coverage rules); parameterized queries, DECIMAL -> number, Date -> ISO 8601.
 
 ### 4a. Authentication (`/src/auth/`)
 *Single shared auth module used by both the API and the MCP server.*

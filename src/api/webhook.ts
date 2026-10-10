@@ -11,6 +11,9 @@ import { logger } from "../utils/logger";
 import path from "path";
 import { requireAuth } from "../auth/jwt";
 import { authRouter } from "./routes/auth";
+import { claimsRouter } from "./routes/claims";
+import { getClaimById } from "../db/claims_repository";
+import { resolveDecisionSources } from "./sources";
 
 const app = express();
 app.use(express.json());
@@ -19,6 +22,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../../public")));
 
 app.use(authRouter);
+app.use(claimsRouter);
 
 app.post("/claim", requireAuth, async (
     req: Request<Record<string, never>, ClaimResolutionResponse | ErrorResponse, ClaimRequest>,
@@ -65,12 +69,24 @@ app.post("/claim", requireAuth, async (
             throw new Error("Graph finished without a persisted decision");
         }
 
+        // Re-read the claim so the response reflects the persisted status, and
+        // resolve the cited IDs to full DB rows (Ticket 7.2, "Source of Truth").
+        const [persistedClaim, sources] = await Promise.all([
+            getClaimById(claimId),
+            resolveDecisionSources(result.decision.citations),
+        ]);
+        if (!persistedClaim) {
+            throw new Error(`Claim ${claimId} not found after persistence`);
+        }
+
         const lastAgentMessage = [...result.messages].reverse().find((m) => AIMessage.isInstance(m));
         const response: ClaimResolutionResponse = {
             claim_id: claimId,
             status: result.claim_status,
             decision: result.decision,
             summary: lastAgentMessage ? messageText(lastAgentMessage.content) : "",
+            claim: persistedClaim,
+            sources,
         };
 
         logger.info(`Claim processed successfully`, { claim_id: claimId, status: response.status });

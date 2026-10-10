@@ -91,7 +91,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 
 - [x] **Ticket 7.1: Citation Generation**
   - Update the LLM node prompt to require structured output containing the exact `coverage_rules` or `policies` IDs used in the decision.
-- [ ] **Ticket 7.2: UI/API Response Enhancement**
+- [x] **Ticket 7.2: UI/API Response Enhancement**
   - Update the webhook response schema and the UI to clearly display the "Source of Truth" linking back to the specific policy clauses.
 
 ---
