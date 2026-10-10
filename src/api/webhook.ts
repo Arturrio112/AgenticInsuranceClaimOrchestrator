@@ -4,6 +4,9 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { messageText } from "../agent/decision";
 import { ClaimRequest, ClaimResolutionResponse, ErrorResponse } from "./types";
 import { CallbackHandler } from "langfuse-langchain";
+import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+import { AuditCallbackHandler } from "../agent/callbacks/audit";
+import { getAuditLogsForClaim } from "../db/audit_repository";
 import { logger } from "../utils/logger";
 import path from "path";
 import { requireAuth } from "../auth/jwt";
@@ -41,7 +44,8 @@ app.post("/claim", requireAuth, async (
         };
 
         logger.info(`Processing claim request`, { claim_id: claimId });
-        const callbacks = [];
+        const auditTrail = new AuditCallbackHandler(claimId);
+        const callbacks: BaseCallbackHandler[] = [auditTrail];
         if (process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY) {
             callbacks.push(new CallbackHandler({
                 publicKey: process.env.LANGFUSE_PUBLIC_KEY,
@@ -50,7 +54,8 @@ app.post("/claim", requireAuth, async (
             }));
         }
 
-        const result = await graphApp.invoke(initialState, { callbacks });
+        // Flush the audit trail (success or failure) so it is complete before we respond.
+        const result = await graphApp.invoke(initialState, { callbacks }).finally(() => auditTrail.flush());
 
         if (!result.claim) {
             res.status(404).json({ error: `Claim ${claimId} not found` });
@@ -73,6 +78,22 @@ app.post("/claim", requireAuth, async (
     } catch (error) {
         logger.error("Error processing claim via webhook:", error);
         res.status(500).json({ error: "Internal server error while processing claim" });
+    }
+});
+
+app.get("/claims/:id/audit", requireAuth, async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+    const claimId = Number(req.params.id);
+    if (!Number.isInteger(claimId) || claimId <= 0) {
+        res.status(400).json({ error: "Claim id must be a positive integer" });
+        return;
+    }
+
+    try {
+        const entries = await getAuditLogsForClaim(claimId);
+        res.json({ claim_id: claimId, count: entries.length, entries });
+    } catch (error) {
+        logger.error("Error fetching audit trail:", error);
+        res.status(500).json({ error: "Internal server error while fetching audit trail" });
     }
 });
 

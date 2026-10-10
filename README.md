@@ -10,6 +10,7 @@ The orchestrator utilizes **LangGraph** to coordinate multi-step reasoning workf
 - **Agentic Workflow:** LangGraph.js implementation for cyclic reasoning and tool-use orchestration.
 - **Interfaces:** JWT-secured Webhook API and simple Web UI for claim submission and monitoring.
 - **Observability:** Comprehensive observability with Langfuse tracing.
+- **Audit Trail:** Every node, LLM call and tool call of a claim run is written to an append-only `audit_logs` table (UPDATE/DELETE are rejected by a DB trigger) and exposed via `GET /claims/:id/audit`.
 
 ## Architecture Data Flow
 
@@ -25,6 +26,7 @@ flowchart TD
     
     MCP <-->|Queries & Updates| DB[(PostgreSQL)]
     LangGraph -.->|Traces & Telemetry| Langfuse[Langfuse Observability]
+    LangGraph -.->|Audit callback| DB
 ```
 
 ## Setup Instructions
@@ -102,6 +104,17 @@ npx ts-node src/db/seed.ts
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
 - If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
 - The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
+
+## Audit Trail
+Each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`) that records
+`node_start`/`node_end`, `llm_start`/`llm_end` (messages and tool calls), `tool_start`/`tool_end` (tool name, input, output)
+and `error` events into `audit_logs`. Writes are queued in event order, flushed before the HTTP response returns,
+and never fail the claim (errors are only logged). Long strings in payloads are truncated.
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/claims/1/audit
+# => { "claim_id": 1, "count": 8, "entries": [{ "step_index": 0, "event_type": "node_start", "node_name": "agent", "payload": {...}, ... }] }
+```
 
 ## Future Improvements
 - **Duplication Triage:** Automatically detect and triage duplicate claims (using vector similarity or SQL) to prevent double payouts.
