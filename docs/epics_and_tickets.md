@@ -109,7 +109,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 📜 Epic 9: Audit Trail Logging
 *Goal: Maintain an immutable record of every step the AI took to reach a decision.*
 
-- [ ] **Ticket 9.1: Audit Table Creation**
+- [x] **Ticket 9.1: Audit Table Creation**
   - Create an `audit_logs` table in PostgreSQL to store the agent's thought process, tool invocations, and state transitions per claim.
-- [ ] **Ticket 9.2: Audit LangGraph Callback**
+- [x] **Ticket 9.2: Audit LangGraph Callback**
   - Implement a LangGraph callback handler that writes the internal execution trace directly into the `audit_logs` table.

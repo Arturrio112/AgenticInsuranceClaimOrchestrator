@@ -10,7 +10,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --testPathIgnorePatterns /node_modules/ /e2e/",
-    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js src/__tests__/e2e",
+    "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.js --runInBand src/__tests__/e2e",
     "lint": "eslint \"src/**/*.ts\""
   },
   "keywords": [],
