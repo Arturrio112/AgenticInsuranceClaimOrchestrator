@@ -16,8 +16,8 @@ import {
     RULE_CATALOG,
     RuleSpec,
     UNCOVERED_DAMAGE,
+    QUOTE_SENTENCES,
     UncoveredDamage,
-    VAGUE_DESCRIPTIONS,
 } from "./catalog";
 
 export interface ScenarioInfo {
@@ -35,10 +35,15 @@ export const SCENARIO_IDS = [
     "no_rule",
     "exclusion",
     "at_limit",
-    "ambiguous",
+    "contradictory_damage",
+    "uncertain_evidence",
+    "uncertain_cause",
+    "amount_mismatch",
 ] as const;
 
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
+
+const LOW_CONFIDENCE = "low confidence -> needs_human_review (any verdict)";
 
 export const SCENARIOS: Readonly<Record<ScenarioId, ScenarioInfo>> = {
     covered: {
@@ -71,10 +76,25 @@ export const SCENARIOS: Readonly<Record<ScenarioId, ScenarioInfo>> = {
         summary: "Amount exactly equal to the limit",
         expected: "approve",
     },
-    ambiguous: {
-        id: "ambiguous",
-        summary: "Vague description with no clear cause",
-        expected: "low confidence, needs_human_review",
+    contradictory_damage: {
+        id: "contradictory_damage",
+        summary: "The description describes a different kind of damage than damage_type",
+        expected: LOW_CONFIDENCE,
+    },
+    uncertain_evidence: {
+        id: "uncertain_evidence",
+        summary: "A rule condition requires evidence the claimant is unsure exists",
+        expected: LOW_CONFIDENCE,
+    },
+    uncertain_cause: {
+        id: "uncertain_cause",
+        summary: "The cause could fall on either side of a rule exclusion",
+        expected: LOW_CONFIDENCE,
+    },
+    amount_mismatch: {
+        id: "amount_mismatch",
+        summary: "The description states a quote or invoice far below claim_amount",
+        expected: LOW_CONFIDENCE,
     },
 };
 
@@ -111,6 +131,11 @@ export interface GeneratedClaim {
     damage_type: string;
     claim_amount: number;
     description: string;
+    /**
+     * Damage type whose description templates wrote `description`. Equal to
+     * `damage_type` except for contradictory_damage. For tests and the console only; never persisted.
+     */
+    described_damage_type: string;
     /** For the console summary only; never persisted. */
     scenario: ScenarioId;
     /** The limit the amount was derived from, or null when no rule applies. */
@@ -156,8 +181,8 @@ interface EffectiveRule {
     catalog: CatalogRule;
     max: number;
     existsInDb: boolean;
-    /** False when the DB copy's conditions differ, since the exclusion texts would no longer apply. */
-    exclusionApplies: boolean;
+    /** False when the DB copy's conditions differ, since condition-specific texts would no longer apply. */
+    conditionsMatch: boolean;
 }
 
 interface ClaimDraft {
@@ -165,6 +190,7 @@ interface ClaimDraft {
     damage_type: string;
     claim_amount: number;
     description: string;
+    described_damage_type: string;
     status: PolicyStatus;
     max_coverage_amount: number | null;
 }
@@ -184,7 +210,7 @@ function resolveRules(existing: readonly ExistingRule[]): EffectiveRule[] {
             catalog,
             max: db === undefined ? catalog.max_coverage_amount : Number(db.max_coverage_amount),
             existsInDb: db !== undefined,
-            exclusionApplies: catalog.exclusion.length > 0 && conditionsMatch,
+            conditionsMatch,
         };
     });
 }
@@ -195,18 +221,66 @@ function describe(rng: Rng, rule: EffectiveRule, amount: number): string {
     return rng.pick(templates)(rng);
 }
 
-function draftFor(rule: EffectiveRule, amount: number, description: string, status: PolicyStatus): ClaimDraft {
+function draftFor(
+    rule: EffectiveRule,
+    amount: number,
+    description: string,
+    status: PolicyStatus,
+    describedDamageType: string = rule.catalog.damage_type
+): ClaimDraft {
     return {
         policy_type: rule.catalog.policy_type,
         damage_type: rule.catalog.damage_type,
         claim_amount: amount,
         description,
+        described_damage_type: describedDamageType,
         status,
         max_coverage_amount: rule.max,
     };
 }
 
 type ScenarioBuilder = (rng: Rng) => ClaimDraft;
+
+/** amount_mismatch: the figure stated in the description is this fraction of claim_amount. */
+export const MISMATCH_MIN_RATIO = 0.2;
+export const MISMATCH_MAX_RATIO = 0.45;
+
+/** "$1,234" (whole dollars), the way a claimant would write a quote. */
+export function formatDollars(value: number): string {
+    return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+/** An amount in [3%, 30%] of the limit, but at least `min` (e.g. a $1000 evidence threshold) and at most the limit. */
+function amountAbove(rng: Rng, rule: EffectiveRule, min: number): number {
+    const low = Math.max(min, rule.max * 0.03);
+    const high = Math.max(low, rule.max * 0.3);
+    return Math.min(toMoney(rng.between(low, high)), rule.max);
+}
+
+interface DescriptionSource {
+    damage_type: string;
+    templates: readonly DescriptionTemplate[];
+}
+
+/**
+ * Description templates of every *other* damage category of the same policy type
+ * (other catalog rules and uncovered damage types). A claim filed as `rule`'s
+ * damage type but described with one of these contradicts itself.
+ */
+function contradictionSources(
+    rule: EffectiveRule,
+    rules: readonly EffectiveRule[],
+    uncovered: readonly UncoveredDamage[]
+): DescriptionSource[] {
+    const { policy_type, damage_type } = rule.catalog;
+    const fromRules = rules
+        .filter((r) => r.catalog.policy_type === policy_type && r.catalog.damage_type !== damage_type)
+        .map((r) => ({ damage_type: r.catalog.damage_type, templates: [...r.catalog.minor, ...r.catalog.major] }));
+    const fromUncovered = uncovered
+        .filter((d) => d.policy_type === policy_type && d.damage_type !== damage_type)
+        .map((d) => ({ damage_type: d.damage_type, templates: d.descriptions }));
+    return [...fromRules, ...fromUncovered].filter((s) => s.templates.length > 0);
+}
 
 /**
  * Returns a builder per scenario that can be produced with the current rules.
@@ -215,7 +289,9 @@ type ScenarioBuilder = (rng: Rng) => ClaimDraft;
  */
 function scenarioBuilders(rules: readonly EffectiveRule[], uncovered: readonly UncoveredDamage[]): Map<ScenarioId, ScenarioBuilder> {
     const usable = rules.filter((r) => r.max > 0);
-    const withExclusion = usable.filter((r) => r.exclusionApplies);
+    const withExclusion = usable.filter((r) => r.conditionsMatch && r.catalog.exclusion.length > 0);
+    const withUncertainEvidence = usable.filter((r) => r.conditionsMatch && r.catalog.uncertainEvidence.length > 0);
+    const withUncertainCause = usable.filter((r) => r.conditionsMatch && r.catalog.uncertainCause.length > 0);
     const builders = new Map<ScenarioId, ScenarioBuilder>();
     if (usable.length === 0) return builders;
 
@@ -245,6 +321,7 @@ function scenarioBuilders(rules: readonly EffectiveRule[], uncovered: readonly U
                 damage_type: damage.damage_type,
                 claim_amount: toMoney(rng.between(damage.minAmount, damage.maxAmount)),
                 description: rng.pick(damage.descriptions)(rng),
+                described_damage_type: damage.damage_type,
                 status: "active",
                 max_coverage_amount: null,
             };
@@ -254,9 +331,7 @@ function scenarioBuilders(rules: readonly EffectiveRule[], uncovered: readonly U
     if (withExclusion.length > 0) {
         builders.set("exclusion", (rng) => {
             const rule = rng.pick(withExclusion);
-            const low = Math.max(rule.catalog.exclusionMinAmount ?? 0, rule.max * 0.03);
-            const high = Math.max(low, rule.max * 0.3);
-            const amount = Math.min(toMoney(rng.between(low, high)), rule.max);
+            const amount = amountAbove(rng, rule, rule.catalog.exclusionMinAmount ?? 0);
             return draftFor(rule, amount, rng.pick(rule.catalog.exclusion)(rng), "active");
         });
     }
@@ -266,10 +341,40 @@ function scenarioBuilders(rules: readonly EffectiveRule[], uncovered: readonly U
         return draftFor(rule, rule.max, rng.pick(rule.catalog.major)(rng), "active");
     });
 
-    builders.set("ambiguous", (rng) => {
+    const contradictions = usable
+        .map((rule) => ({ rule, sources: contradictionSources(rule, rules, uncovered) }))
+        .filter((c) => c.sources.length > 0);
+    if (contradictions.length > 0) {
+        builders.set("contradictory_damage", (rng) => {
+            const { rule, sources } = rng.pick(contradictions);
+            const source = rng.pick(sources);
+            const amount = Math.max(0.01, toMoney(rule.max * rng.between(0.1, 0.5)));
+            return draftFor(rule, amount, rng.pick(source.templates)(rng), "active", source.damage_type);
+        });
+    }
+
+    if (withUncertainEvidence.length > 0) {
+        builders.set("uncertain_evidence", (rng) => {
+            const rule = rng.pick(withUncertainEvidence);
+            const amount = amountAbove(rng, rule, rule.catalog.uncertainEvidenceMinAmount ?? 0);
+            return draftFor(rule, amount, rng.pick(rule.catalog.uncertainEvidence)(rng), "active");
+        });
+    }
+
+    if (withUncertainCause.length > 0) {
+        builders.set("uncertain_cause", (rng) => {
+            const rule = rng.pick(withUncertainCause);
+            const amount = amountAbove(rng, rule, 0);
+            return draftFor(rule, amount, rng.pick(rule.catalog.uncertainCause)(rng), "active");
+        });
+    }
+
+    builders.set("amount_mismatch", (rng) => {
         const rule = rng.pick(usable);
-        const amount = Math.max(0.01, toMoney(rule.max * rng.between(0.1, 0.5)));
-        return draftFor(rule, amount, rng.pick(VAGUE_DESCRIPTIONS[rule.catalog.policy_type])(rng), "active");
+        const amount = Math.max(0.01, toMoney(rule.max * rng.between(0.3, 0.8)));
+        const quoted = Math.max(1, Math.round(amount * rng.between(MISMATCH_MIN_RATIO, MISMATCH_MAX_RATIO)));
+        const quote = rng.pick(QUOTE_SENTENCES[rule.catalog.policy_type])(formatDollars(quoted));
+        return draftFor(rule, amount, `${describe(rng, rule, amount)} ${quote}`, "active");
     });
 
     return builders;
@@ -348,6 +453,7 @@ export function generateDataset(options: GenerateOptions): GeneratedDataset {
             damage_type: draft.damage_type,
             claim_amount: draft.claim_amount,
             description: draft.description,
+            described_damage_type: draft.described_damage_type,
             scenario,
             max_coverage_amount: draft.max_coverage_amount,
         });

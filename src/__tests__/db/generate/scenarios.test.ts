@@ -1,6 +1,8 @@
-import { RULE_CATALOG, UNCOVERED_DAMAGE } from "../../../db/generate/catalog";
+import { DescriptionTemplate, RULE_CATALOG, UNCOVERED_DAMAGE } from "../../../db/generate/catalog";
 import {
     ExistingRule,
+    MISMATCH_MAX_RATIO,
+    MISMATCH_MIN_RATIO,
     GeneratedClaim,
     GeneratedDataset,
     GeneratedPolicy,
@@ -22,6 +24,42 @@ function limitOf(claim: GeneratedClaim, existing: readonly ExistingRule[] = []):
     const catalog = RULE_CATALOG.find((r) => r.policy_type === claim.policy_type && r.damage_type === claim.damage_type);
     if (!catalog) throw new Error(`No rule for ${claim.policy_type}/${claim.damage_type}`);
     return catalog.max_coverage_amount;
+}
+
+function catalogRuleOf(claim: GeneratedClaim) {
+    const rule = RULE_CATALOG.find((r) => r.policy_type === claim.policy_type && r.damage_type === claim.damage_type);
+    if (!rule) throw new Error(`No catalog rule for ${claim.policy_type}/${claim.damage_type}`);
+    return rule;
+}
+
+/** The fixed text a template always starts with: the common prefix of many renderings. */
+function staticPrefix(template: DescriptionTemplate): string {
+    const renderings = Array.from({ length: 30 }, (_, seed) => template(createRng(seed)));
+    let prefix = renderings[0];
+    for (const text of renderings) {
+        while (!text.startsWith(prefix)) prefix = prefix.slice(0, -1);
+    }
+    return prefix;
+}
+function isFrom(description: string, templates: readonly DescriptionTemplate[]): boolean {
+    return templates.some((t) => description.startsWith(staticPrefix(t)));
+}
+
+/** Every description template of one damage category (rule or uncovered damage type). */
+function categoryTemplates(policyType: string, damageType: string): DescriptionTemplate[] {
+    const rule = RULE_CATALOG.find((r) => r.policy_type === policyType && r.damage_type === damageType);
+    if (rule) return [...rule.minor, ...rule.major, ...rule.exclusion, ...rule.uncertainEvidence, ...rule.uncertainCause];
+    const uncovered = UNCOVERED_DAMAGE.find((d) => d.policy_type === policyType && d.damage_type === damageType);
+    if (uncovered) return [...uncovered.descriptions];
+    throw new Error(`Unknown damage category ${policyType}/${damageType}`);
+}
+
+const LOW_CONFIDENCE_SCENARIOS = ["contradictory_damage", "uncertain_evidence", "uncertain_cause", "amount_mismatch"] as const;
+
+function claimsOf(scenario: string, count = 300, seeds: readonly number[] = [1, 2, 3]): GeneratedClaim[] {
+    return seeds.flatMap((seed) =>
+        generateDataset({ claimCount: count, seed, existingRules: SEEDED_RULES }).claims.filter((c) => c.scenario === scenario)
+    );
 }
 
 function policyOf(dataset: GeneratedDataset, claim: GeneratedClaim): GeneratedPolicy {
@@ -63,7 +101,7 @@ describe("generateDataset", () => {
         );
     });
 
-    it.each([7, 8, 20])("represents every scenario when n = %i >= the number of scenarios", (n) => {
+    it.each([SCENARIO_IDS.length, SCENARIO_IDS.length + 1, 20])("represents every scenario when n = %i >= the number of scenarios", (n) => {
         for (const seed of [1, 2, 3, 99]) {
             const scenarios = new Set(generateDataset({ claimCount: n, seed }).claims.map((c) => c.scenario));
             expect([...scenarios].sort()).toEqual([...SCENARIO_IDS].sort());
@@ -134,6 +172,10 @@ describe("generateDataset", () => {
             "exclusion",
             "excluded",
             "ambiguous",
+            "uncertain",
+            "contradict",
+            "mismatch",
+            "evidence",
             "approve",
             "reject",
             "scenario",
@@ -145,6 +187,97 @@ describe("generateDataset", () => {
                 for (const word of forbidden) expect(text).not.toContain(word);
             }
         }
+    });
+
+    it("can tell every description template apart by its fixed opening text", () => {
+        const all = [
+            ...RULE_CATALOG.flatMap((r) => [...r.minor, ...r.major, ...r.exclusion, ...r.uncertainEvidence, ...r.uncertainCause]),
+            ...UNCOVERED_DAMAGE.flatMap((d) => d.descriptions),
+        ].map(staticPrefix);
+        for (const [i, a] of all.entries()) {
+            expect(a.length).toBeGreaterThanOrEqual(15);
+            for (const [j, b] of all.entries()) if (i !== j) expect(b.startsWith(a)).toBe(false);
+        }
+    });
+
+    it.each(LOW_CONFIDENCE_SCENARIOS)("produces %s claims with an active policy, a rule and an amount under the limit", (scenario) => {
+        for (const seed of [1, 2, 3]) {
+            const dataset = generateDataset({ claimCount: 200, seed, existingRules: SEEDED_RULES });
+            const claims = dataset.claims.filter((c) => c.scenario === scenario);
+            expect(claims.length).toBeGreaterThan(0);
+            for (const claim of claims) {
+                expect(policyOf(dataset, claim).status).toBe("active");
+                expect(claim.max_coverage_amount).toBe(limitOf(claim, SEEDED_RULES));
+                expect(claim.claim_amount).toBeLessThan(limitOf(claim, SEEDED_RULES));
+            }
+        }
+    });
+
+    it("describes contradictory_damage claims with another damage category's templates", () => {
+        const claims = claimsOf("contradictory_damage");
+        expect(claims.length).toBeGreaterThan(0);
+        const describedAs = new Set<string>();
+        for (const claim of claims) {
+            expect(claim.described_damage_type).not.toBe(claim.damage_type);
+            describedAs.add(claim.described_damage_type);
+            expect(isFrom(claim.description, categoryTemplates(claim.policy_type, claim.described_damage_type))).toBe(true);
+            expect(isFrom(claim.description, categoryTemplates(claim.policy_type, claim.damage_type))).toBe(false);
+        }
+        expect(describedAs.size).toBeGreaterThan(2);
+    });
+
+    it("describes every other claim with its own damage category", () => {
+        for (const claim of generateDataset({ claimCount: 300, seed: 4, existingRules: SEEDED_RULES }).claims) {
+            if (claim.scenario === "contradictory_damage") continue;
+            expect(claim.described_damage_type).toBe(claim.damage_type);
+            expect(isFrom(claim.description, categoryTemplates(claim.policy_type, claim.damage_type))).toBe(true);
+        }
+    });
+
+    it("uses evidence-unsure descriptions for uncertain_evidence, above the evidence threshold", () => {
+        const claims = claimsOf("uncertain_evidence");
+        expect(claims.length).toBeGreaterThan(0);
+        for (const claim of claims) {
+            const rule = catalogRuleOf(claim);
+            expect(isFrom(claim.description, rule.uncertainEvidence)).toBe(true);
+            expect(claim.claim_amount).toBeGreaterThanOrEqual(rule.uncertainEvidenceMinAmount ?? 0);
+            if (claim.damage_type === "collision") expect(claim.claim_amount).toBeGreaterThan(1000);
+        }
+        expect(claims.some((c) => c.damage_type === "collision")).toBe(true);
+    });
+
+    it("uses cause-unsure descriptions for uncertain_cause", () => {
+        const claims = claimsOf("uncertain_cause");
+        expect(claims.length).toBeGreaterThan(0);
+        for (const claim of claims) expect(isFrom(claim.description, catalogRuleOf(claim).uncertainCause)).toBe(true);
+        expect(claims.some((c) => c.damage_type === "water_damage")).toBe(true);
+    });
+
+    it("states a figure clearly below claim_amount in amount_mismatch descriptions", () => {
+        const claims = claimsOf("amount_mismatch");
+        expect(claims.length).toBeGreaterThan(0);
+        for (const claim of claims) {
+            const figures = [...claim.description.matchAll(/\$([\d,]+)/g)].map((m) => Number(m[1].replace(/,/g, "")));
+            expect(figures).toHaveLength(1);
+            const ratio = figures[0] / claim.claim_amount;
+            expect(ratio).toBeGreaterThanOrEqual(MISMATCH_MIN_RATIO - 0.01);
+            expect(ratio).toBeLessThanOrEqual(MISMATCH_MAX_RATIO + 0.01);
+        }
+    });
+
+    it("skips the uncertain scenarios for a rule whose conditions were changed in the database", () => {
+        const changed: ExistingRule[] = RULE_CATALOG.map((r) => ({
+            policy_type: r.policy_type,
+            damage_type: r.damage_type,
+            max_coverage_amount: r.max_coverage_amount,
+            conditions: "Changed",
+        }));
+        const scenarios = new Set(generateDataset({ claimCount: 200, seed: 3, existingRules: changed }).claims.map((c) => c.scenario));
+        expect(scenarios.has("uncertain_evidence")).toBe(false);
+        expect(scenarios.has("uncertain_cause")).toBe(false);
+        expect(scenarios.has("exclusion")).toBe(false);
+        expect(scenarios.has("contradictory_damage")).toBe(true);
+        expect(scenarios.has("amount_mismatch")).toBe(true);
     });
 
     it("only returns catalog rules missing from the database", () => {

@@ -40,6 +40,20 @@ export interface CatalogRule extends RuleSpec {
     exclusion: readonly DescriptionTemplate[];
     /** Smallest amount for which the exclusion is relevant (e.g. the $1000 police-report threshold). */
     exclusionMinAmount?: number;
+    /**
+     * Descriptions in which the claimant is unsure whether the evidence a condition
+     * requires (police report, irregularity report, forced entry) exists. Empty when
+     * the rule requires no evidence.
+     */
+    uncertainEvidence: readonly DescriptionTemplate[];
+    /** Smallest amount for which the evidence condition applies (e.g. collision over $1000). */
+    uncertainEvidenceMinAmount?: number;
+    /**
+     * Descriptions in which the cause could fall on either side of an exclusion
+     * (river flood or roof leak, a pre-existing condition or not). Empty when the
+     * rule has no cause-based exclusion.
+     */
+    uncertainCause: readonly DescriptionTemplate[];
 }
 
 /** A (policy type, damage type) pair the generator never creates a rule for. */
@@ -95,6 +109,16 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 "separate ways. Passenger doors and side mirror need bodywork.",
         ],
         exclusionMinAmount: 1500,
+        uncertainEvidence: [
+            () =>
+                "Another car pulled out of a side street and hit my driver's door. I think my wife may have called " +
+                "the police afterwards, but I'm not sure a report was ever filed and I don't have a number.",
+            (r) =>
+                `I was hit at a roundabout on ${weekday(r)}. There was a police car nearby and an officer may have ` +
+                "taken some notes; I can't remember if he said a report would be made. Front bumper and grille are smashed.",
+        ],
+        uncertainEvidenceMinAmount: 1500,
+        uncertainCause: [],
     },
     {
         policy_type: "auto",
@@ -110,6 +134,8 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
             () => "A tree branch fell on the parked car and smashed the windshield and the rear window.",
         ],
         exclusion: [],
+        uncertainEvidence: [],
+        uncertainCause: [],
     },
     {
         policy_type: "auto",
@@ -137,6 +163,16 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
             () =>
                 "My car disappeared from the airport long-stay car park while I was abroad. I only noticed when I " +
                 "got back nine days later and reported it to the police then.",
+        ],
+        uncertainEvidence: [
+            () =>
+                "My car was stolen from the supermarket car park. My son said he would phone the police for me " +
+                "that weekend; I believe he did, but I don't know when, and I have no reference number.",
+        ],
+        uncertainCause: [
+            () =>
+                "Thieves broke into the car overnight and took the built-in sat nav screen and a child seat. I'm " +
+                "not sure whether the child seat counts as part of the car or as my own belongings.",
         ],
     },
     {
@@ -166,6 +202,15 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 "A flash flood after a storm sent water and mud through the garage and basement. Everything stored " +
                 "down there was destroyed.",
         ],
+        uncertainEvidence: [],
+        uncertainCause: [
+            () =>
+                "Water came into the downstairs rooms during the big storm. I'm not sure if it was the river " +
+                "rising at the bottom of the garden or rain getting in through the roof; the carpets and walls are soaked.",
+            () =>
+                "We found the basement under several centimetres of water after a night of heavy rain. It could " +
+                "have been groundwater coming up or the old pipe by the boiler; the plumber couldn't say which.",
+        ],
     },
     {
         policy_type: "home",
@@ -188,6 +233,12 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 "Fire destroyed our holiday cottage. Nobody had been there since last autumn, about five months " +
                 "ago; a neighbour saw the smoke and called the fire brigade.",
         ],
+        uncertainEvidence: [],
+        uncertainCause: [
+            () =>
+                "A fire damaged the kitchen of our second home. We had been away for a while before it happened, " +
+                "maybe six weeks, maybe nine; I would have to check the dates.",
+        ],
     },
     {
         policy_type: "home",
@@ -209,6 +260,12 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 "I came home and my bike and a games console were gone from the hallway. I think I left the front " +
                 "door unlocked; there is no damage to the door or windows.",
         ],
+        uncertainEvidence: [
+            () =>
+                "Jewellery and a laptop were taken from the house while we were out. The back door lock was a bit " +
+                "loose anyway, so I can't really tell if it was forced. My partner may have rung the police, I'm not sure.",
+        ],
+        uncertainCause: [],
     },
     {
         policy_type: "travel",
@@ -231,6 +288,15 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
                 `My long-standing heart condition, which I have been treated for since 2019, got worse while I was ` +
                 `in ${city(r)} and I was admitted to hospital for monitoring.`,
         ],
+        uncertainEvidence: [],
+        uncertainCause: [
+            (r) =>
+                `I had chest pains in ${city(r)} and was admitted to hospital for two nights. I've had some chest ` +
+                "discomfort on and off over the past year but never saw a doctor about it, so I don't know if it's related.",
+            (r) =>
+                `My back gave out while carrying luggage in ${city(r)} and I needed hospital treatment. I have had ` +
+                "back trouble before, though I'm not sure it was the same problem.",
+        ],
     },
     {
         policy_type: "travel",
@@ -252,6 +318,16 @@ export const RULE_CATALOG: readonly CatalogRule[] = [
             (r) =>
                 `I left my backpack with my camera on a cafe table in ${city(r)} while I went to order, and it was ` +
                 "gone when I came back.",
+        ],
+        uncertainEvidence: [
+            (r) =>
+                `My suitcase did not arrive in ${city(r)}. I believe the airline gave me some form at the desk, but ` +
+                "I can't find it now and I'm not sure what it was called.",
+        ],
+        uncertainCause: [
+            (r) =>
+                `My bag went missing at the airport in ${city(r)}. I put it down for a moment near the gate and it may ` +
+                "have been taken there, or the airline may have lost it after check-in; I honestly don't know which.",
         ],
     },
 ];
@@ -298,19 +374,24 @@ export const UNCOVERED_DAMAGE: readonly UncoveredDamage[] = [
     },
 ];
 
-/** Vague descriptions that leave the cause and extent of the loss unclear. Grouped by policy type. */
-export const VAGUE_DESCRIPTIONS: Readonly<Record<PolicyType, readonly DescriptionTemplate[]>> = {
+/** Renders a sentence stating a figure (e.g. a repair quote) the claimant paid or was quoted. */
+export type QuoteTemplate = (figure: string) => string;
+
+/**
+ * Sentences that state a repair quote, invoice or receipt total. Appended to a
+ * normal description with a figure clearly different from claim_amount.
+ */
+export const QUOTE_SENTENCES: Readonly<Record<PolicyType, readonly QuoteTemplate[]>> = {
     auto: [
-        () => "Something happened to the car, not sure exactly what. It doesn't look right and needs fixing.",
-        () => "Car has damage. Found it like this. Please pay.",
-        () => "There was an incident a while ago, I think the car got hit or something. Details to follow maybe.",
+        (figure) => `The garage's written repair quote came to ${figure}.`,
+        (figure) => `The body shop invoice I paid was ${figure} in total.`,
     ],
     home: [
-        () => "There is some damage in the house, not sure how it happened or when. Need money for repairs.",
-        () => "Stuff got ruined at home. Want to claim for it.",
+        (figure) => `The contractor's written estimate for all the repairs is ${figure}.`,
+        (figure) => `The repair invoice came to ${figure}.`,
     ],
     travel: [
-        () => "Things went wrong on my trip and I had extra costs. Please reimburse.",
-        (r) => `Had a problem while I was in ${city(r)}, it cost a lot. Can't remember all the details.`,
+        (figure) => `My receipts for everything add up to ${figure}.`,
+        (figure) => `The bill I paid came to ${figure} in total.`,
     ],
 };

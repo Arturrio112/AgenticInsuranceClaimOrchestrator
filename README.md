@@ -135,9 +135,14 @@ Each claim gets its own new policy and belongs to one scenario:
 | `no_rule` | Damage type with no rule (e.g. auto/mechanical_breakdown, home/earthquake, travel/trip_cancellation) | reject or flag |
 | `exclusion` | The description triggers a rule exclusion (flood water damage, collision over $1000 with no police report, theft without forced entry, pre-existing condition, ...) | reject or flag |
 | `at_limit` | Amount exactly equal to the limit | approve |
-| `ambiguous` | Vague description with no clear cause | low confidence, `needs_human_review` |
+| `contradictory_damage` | The description is written for another damage type of the same policy type (e.g. filed as auto/theft, described as a chipped windshield; filed as home/fire, described as rats in the wiring) | low confidence, `needs_human_review` |
+| `uncertain_evidence` | A rule requires evidence and the claimant is unsure it exists ("I think my wife may have called the police, I'm not sure a report was filed" on a collision over $1000; "I believe the airline gave me some form") | low confidence, `needs_human_review` |
+| `uncertain_cause` | The cause could fall on either side of an exclusion (river flood or roof leak; earlier chest discomfort that may be a pre-existing condition; a property left empty "maybe six weeks, maybe nine") | low confidence, `needs_human_review` |
+| `amount_mismatch` | The description states a repair quote, invoice or receipts total of only 20-45% of `claim_amount` | low confidence, `needs_human_review` |
 
-The first claims cover every scenario once, so any `CLAIMS` of 7 or more includes all of them. The command prints a table of the new claims (id, policy, type, damage, amount, limit, scenario). The scenario appears only in this console output, never in the database or in the description the agent reads.
+The last four scenarios have facts that conflict or that the claimant isn't sure about, so the right outcome is a low `confidence_score` and a human reviewer, whatever the verdict.
+
+The first claims cover every scenario once, so any `CLAIMS` of 10 or more includes all of them. The command prints a table of the new claims (id, policy, type, damage, amount, limit, scenario). The scenario appears only in this console output, never in the database or in the description the agent reads.
 
 ## Configuration
 
