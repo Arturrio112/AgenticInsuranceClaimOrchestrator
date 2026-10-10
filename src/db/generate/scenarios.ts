@@ -26,6 +26,11 @@ export interface ScenarioInfo {
     summary: string;
     /** What the agent is expected to do. Informational only. */
     expected: string;
+    /**
+     * True when the facts conflict or are uncertain, so the decision should land
+     * below the confidence threshold (needs_human_review). Used by the decision eval.
+     */
+    lowConfidence: boolean;
 }
 
 export const SCENARIO_IDS = [
@@ -50,51 +55,61 @@ export const SCENARIOS: Readonly<Record<ScenarioId, ScenarioInfo>> = {
         id: "covered",
         summary: "Active policy, matching rule, amount well under the limit",
         expected: "approve",
+        lowConfidence: false,
     },
     over_limit: {
         id: "over_limit",
         summary: "Amount above the rule's max_coverage_amount",
         expected: "reject or flag",
+        lowConfidence: false,
     },
     inactive_policy: {
         id: "inactive_policy",
         summary: "Policy status is inactive or lapsed",
         expected: "reject",
+        lowConfidence: false,
     },
     no_rule: {
         id: "no_rule",
         summary: "No coverage rule for the policy type and damage type",
         expected: "reject or flag",
+        lowConfidence: false,
     },
     exclusion: {
         id: "exclusion",
         summary: "The description triggers an exclusion in the rule's conditions",
         expected: "reject or flag",
+        lowConfidence: false,
     },
     at_limit: {
         id: "at_limit",
         summary: "Amount exactly equal to the limit",
         expected: "approve",
+        lowConfidence: false,
     },
     contradictory_damage: {
         id: "contradictory_damage",
         summary: "The description describes a different kind of damage than damage_type",
         expected: LOW_CONFIDENCE,
+        lowConfidence: true,
     },
     uncertain_evidence: {
         id: "uncertain_evidence",
         summary: "A rule condition requires evidence the claimant is unsure exists",
         expected: LOW_CONFIDENCE,
+        lowConfidence: true,
     },
     uncertain_cause: {
         id: "uncertain_cause",
         summary: "The cause could fall on either side of a rule exclusion",
         expected: LOW_CONFIDENCE,
+        lowConfidence: true,
     },
     amount_mismatch: {
         id: "amount_mismatch",
         summary: "The description states a quote or invoice far below claim_amount",
         expected: LOW_CONFIDENCE,
+        lowConfidence: true,
     },
 };
 
