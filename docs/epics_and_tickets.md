@@ -113,3 +113,29 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
   - Create an `audit_logs` table in PostgreSQL to store the agent's thought process, tool invocations, and state transitions per claim.
 - [x] **Ticket 9.2: Audit LangGraph Callback**
   - Implement a LangGraph callback handler that writes the internal execution trace directly into the `audit_logs` table.
+
+---
+
+## 🔐 Epic 10: Secrets Hygiene
+*Goal: Comply with the "no hardcoded secrets" rule (AGENTS.md §9). Every credential comes from `.env`, and the system fails fast and clearly when one is missing.*
+
+- [x] **Ticket 10.1: Remove Hardcoded Credential Fallbacks**
+  - Remove the default credentials from `docker-compose.yml` (`${DB_USER:-admin}`, `${DB_PASSWORD:-password123}`, `${PGADMIN_EMAIL:-admin@example.com}`, `${PGADMIN_PASSWORD:-admin}`, and the derived `DATABASE_URL`) in favour of required variables (`${VAR:?message}`).
+  - Remove the `postgres`/`postgres` fallbacks in `src/db/client.ts`, validate the DB configuration at startup like the auth settings, and add unit tests.
+  - Keep `.env.example`, the README configuration table and CI in sync.
+  - *Dependencies:* None.
+
+---
+
+## 🔌 Epic 11: MCP-Native Agent Tools
+*Goal: Make the MCP server the agent's only data-access layer, so the LangGraph agent reaches Postgres exclusively through MCP tools rather than through duplicated in-process tool code.*
+
+- [ ] **Ticket 11.1: MCP Client for the Agent**
+  - Add an MCP client module (`src/agent/mcp_client.ts` or similar) that connects to the project's MCP server and exposes its tools as LangChain tools (e.g. via `@langchain/mcp-adapters`). The transport is configurable through `.env` (in-process by default, stdio optional).
+  - Only the read-only tools (`get_policy`, `check_coverage`) are bound to the investigation. `flag_review` stays out of the agent.
+  - *Dependencies:* None.
+- [ ] **Ticket 11.2: Route the Graph Through MCP**
+  - Replace the duplicated tool implementations in `src/agent/nodes/tool_node.ts` with the MCP-backed tools. Keep citation verification, the audit trail and Langfuse tracing working.
+  - Unit tests for the client, and E2E evals that prove a claim run reaches Postgres through MCP.
+  - Update the README architecture diagram and the feature map.
+  - *Dependencies:* Ticket 11.1.

@@ -1,4 +1,4 @@
-import { pool, query } from './client';
+import { closePool, query } from './client';
 import { createTables } from './schema';
 
 async function seed() {
@@ -36,7 +36,7 @@ async function seed() {
     } catch (err) {
         console.error('Error seeding database:', err);
     } finally {
-        await pool.end();
+        await closePool();
     }
 }
 

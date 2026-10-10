@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
-import { query, pool } from '../../db/client';
+import { query, closePool } from '../../db/client';
 import { createTables, AuditLog } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
 
@@ -66,7 +66,7 @@ describe('E2E: Audit trail for claim processing', () => {
     });
 
     afterAll(async () => {
-        await pool.end();
+        await closePool();
     });
 
     it('writes the execution trace to audit_logs before /claim responds', async () => {

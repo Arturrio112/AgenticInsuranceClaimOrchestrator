@@ -5,9 +5,10 @@ services:
     image: postgres:15-alpine
     env_file: .env
     environment:
-      POSTGRES_USER: ${DB_USER:-admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password123}
-      POSTGRES_DB: ${DB_NAME:-insurance_db}
+      # Required: compose refuses to start if any of these is missing from .env
+      POSTGRES_USER: ${DB_USER:?DB_USER must be set in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME must be set in .env}
     ports:
       - "5432:5432"
     volumes:
@@ -19,8 +20,8 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@example.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:?PGADMIN_EMAIL must be set in .env}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD must be set in .env}
     ports:
       - "5050:80"
     depends_on:
@@ -38,7 +39,7 @@ services:
     environment:
       # Override DB_HOST to point to the postgres container network alias
       - DB_HOST=postgres
-      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:-password123}@postgres:5432/${DB_NAME:-insurance_db}
+      - DATABASE_URL=postgresql://${DB_USER:?DB_USER must be set in .env}:${DB_PASSWORD:?DB_PASSWORD must be set in .env}@postgres:5432/${DB_NAME:?DB_NAME must be set in .env}
     networks:
       - app-network
 
