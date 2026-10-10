@@ -22,5 +22,6 @@ db-seed:
 test:
 	npm test
 
-test-e2e:
+test-e2e: ## Builds first: the stdio MCP E2E test spawns dist/mcp/server.js
+	npm run build
 	npm run test:e2e

@@ -1,4 +1,4 @@
-import { RunContext } from "./types";
+import { McpOrigin, RunContext } from "./types";
 
 const UNKNOWN_TOOL = "unknown";
 
@@ -23,8 +23,8 @@ export class RunTracker {
         return node;
     }
 
-    startRun(runId: string, node: string | null, toolName: string = UNKNOWN_TOOL): void {
-        this.runs.set(runId, { node, toolName });
+    startRun(runId: string, node: string | null, toolName: string = UNKNOWN_TOOL, mcp?: McpOrigin): void {
+        this.runs.set(runId, mcp ? { node, toolName, mcp } : { node, toolName });
     }
 
     /** Returns (and forgets) the context of a finished LLM/tool run. */

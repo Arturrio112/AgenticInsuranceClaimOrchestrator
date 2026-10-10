@@ -107,6 +107,29 @@ describe('AuditCallbackHandler', () => {
         ]);
     });
 
+    it('records the MCP server a tool call went through', async () => {
+        const handler = new AuditCallbackHandler(1);
+        const meta = { langgraph_node: 'tools', mcp_server: 'InsuranceClaimMCP', mcp_transport: 'inmemory' };
+        handler.handleToolStart(serialized, '{"policy_number":"P1"}', 'tool-1', undefined, [], meta, 'get_policy', 'c1');
+        handler.handleToolEnd(new ToolMessage({ content: '{"id":1}', tool_call_id: 'c1' }), 'tool-1');
+        await handler.flush();
+
+        const [start, end] = recordedEntries();
+        expect(start.payload).toEqual({
+            tool_name: 'get_policy',
+            input: '{"policy_number":"P1"}',
+            tool_call_id: 'c1',
+            mcp_server: 'InsuranceClaimMCP',
+            mcp_transport: 'inmemory',
+        });
+        expect(end.payload).toMatchObject({
+            tool_name: 'get_policy',
+            mcp_server: 'InsuranceClaimMCP',
+            mcp_transport: 'inmemory',
+            output: { type: 'tool', content: '{"id":1}' },
+        });
+    });
+
     it('truncates huge strings in payloads', async () => {
         const handler = new AuditCallbackHandler(1);
         const huge = 'x'.repeat(MAX_STRING_LENGTH + 500);

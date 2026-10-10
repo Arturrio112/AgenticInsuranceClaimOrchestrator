@@ -22,7 +22,7 @@ The project is divided into three main domains:
 
 ### 2. MCP Server Layer (`/src/mcp/`)
 *Everything related to exposing tools to the LLM via Model Context Protocol.*
-*   **Server Initialization:** `src/mcp/server.ts` - The core MCP server setup and transport configuration.
+*   **Server Initialization:** `src/mcp/server.ts` - `createMcpServer()` builds a fresh server with all tools registered (no transport); `runServer()` serves it over stdio for external clients and for the agent's stdio mode. The MCP tools are the only implementation of the agent's tools (Epic 11).
 *   **Tool Definitions:** `src/mcp/tools/`
     *   `get_policy.ts` - Tool to fetch active policy details.
     *   `check_coverage.ts` - Tool to fetch business rules for damage types.
@@ -35,13 +35,14 @@ The project is divided into three main domains:
 *   **Model Factory:** `src/agent/model.ts` - Builds the typed `BaseChatModel` for `LLM_PROVIDER` (Ollama by default). The single seam tests mock to fake the LLM.
 *   **Decision Contract:** `src/agent/decision.ts` - Zod `DecisionSchema`, `ClaimDecision` type, citation cross-checking and the safe fallback decision.
 *   **Config:** `src/agent/config.ts` - `CONFIDENCE_THRESHOLD` (default 70).
+*   **MCP Client:** `src/agent/mcp_client.ts` - Ticket 11.1 [x]. Connects to the project's MCP server (`MCP_TRANSPORT=inmemory` default via `InMemoryTransport`, or `stdio` spawning `dist/mcp/server.js` / `MCP_SERVER_PATH`), converts its tools with `@langchain/mcp-adapters` and keeps only `AGENT_TOOL_ALLOW_LIST` (`get_policy`, `check_coverage`; never `flag_review`). `getAgentTools()` shares one connection, `closeMcpClient()` shuts it down. Tools carry `mcp_server` / `mcp_transport` metadata, which the audit trail and Langfuse record.
 *   **Nodes:** `src/agent/nodes/`
     *   `load_claim_node.ts` - Loads the claim + policy number from Postgres into state before the agent runs.
-    *   `llm_node.ts` - The investigating agent (tool-calling LLM). Sees the claim details in its system prompt.
-    *   `tool_node.ts` - Executes the read-only tools (`get_policy`, `check_coverage`).
+    *   `llm_node.ts` - The investigating agent (tool-calling LLM), bound to the MCP-served tools. Sees the claim details in its system prompt.
+    *   `tool_node.ts` - Ticket 11.2 [x]. `createToolNode(tools)`: executes the MCP-served read-only tools (`get_policy`, `check_coverage`). No tool or DB code of its own.
     *   `decide_node.ts` - Structured final decision via `withStructuredOutput` + zod; invalid output falls back to `flag` / confidence 0; invented citation IDs are dropped.
     *   `persist_node.ts` - Writes status + decision columns to `claims`; low confidence -> `needs_human_review`.
-*   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together.
+*   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together. `buildAgentGraph(tools)` compiles the graph for a tool set (tests inject fakes); `getAgentGraph()` builds it once the MCP tools are loaded; `app.invoke()` is the API's entry point.
 *   **Prompts:** `src/agent/prompts.ts` - Agent system prompt, claim context formatter and decision prompt.
 *   **Audit Trail:** `src/agent/callbacks/audit/` - Records node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding). Import from the folder's `index.ts`.
     *   `audit_callback_handler.ts` - `AuditCallbackHandler`: maps LangChain/LangGraph callback events to audit records.
@@ -81,11 +82,12 @@ The project is divided into three main domains:
 *   **Docker:** `docker-compose.yml` - Spins up Postgres.
 *   **Observability:** `src/utils/logger.ts` or Langfuse configuration injected into the LangGraph setup.
 *   **Environment Variables:** `.env` (Ignored in Git) - Stores DB credentials, Langfuse API keys and auth settings (`JWT_SECRET`, `JWT_EXPIRES_IN`, `AUTH_USERNAME`, `AUTH_PASSWORD`). See `.env.example`.
+*   **MCP transport:** `MCP_TRANSPORT` (`inmemory` | `stdio`) and `MCP_SERVER_PATH` select how the agent reaches the MCP server.
 
 ---
 
 ## 🔄 Data Flow (Quick Reference)
-`POST /claim` ➔ `src/api/webhook.ts` ➔ `src/agent/graph.ts` ➔ `Ollama (LLM)` ➔ `ToolCall` ➔ `src/db/client.ts` ➔ `Postgres`
+`POST /claim` ➔ `src/api/webhook.ts` ➔ `src/agent/graph.ts` ➔ `Ollama (LLM)` ➔ `ToolCall` ➔ `src/agent/mcp_client.ts` ➔ `MCP server (src/mcp/tools/)` ➔ `src/db/client.ts` ➔ `Postgres`
 
 ### Graph Flow
 ```

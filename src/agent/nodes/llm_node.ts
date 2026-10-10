@@ -2,14 +2,14 @@ import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import { AIMessageChunk, BaseMessage, SystemMessage } from "@langchain/core/messages";
 import { Runnable } from "@langchain/core/runnables";
+import { StructuredToolInterface } from "@langchain/core/tools";
 import { getChatModel } from "../model";
 import { GraphStateType } from "../state";
 import { SYSTEM_PROMPT, formatClaimContext } from "../prompts";
-import { tools } from "./tool_node";
 
 export type ToolCallingModel = Runnable<BaseLanguageModelInput, AIMessageChunk>;
 
-export function bindAgentTools(model: BaseChatModel): ToolCallingModel {
+export function bindAgentTools(model: BaseChatModel, tools: StructuredToolInterface[]): ToolCallingModel {
     if (!model.bindTools) {
         throw new Error("The configured chat model does not support tool calling.");
     }
@@ -30,11 +30,13 @@ export function createLlmNode(getModel: () => ToolCallingModel) {
     };
 }
 
-let agentModel: ToolCallingModel | undefined;
-
-export const llmNode = createLlmNode(() => {
-    if (!agentModel) {
-        agentModel = bindAgentTools(getChatModel());
-    }
-    return agentModel;
-});
+/** Agent node backed by the configured chat model, bound to the given (MCP-served) tools on first use. */
+export function createAgentLlmNode(tools: StructuredToolInterface[]) {
+    let agentModel: ToolCallingModel | undefined;
+    return createLlmNode(() => {
+        if (!agentModel) {
+            agentModel = bindAgentTools(getChatModel(), tools);
+        }
+        return agentModel;
+    });
+}

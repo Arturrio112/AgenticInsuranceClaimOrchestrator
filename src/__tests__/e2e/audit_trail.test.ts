@@ -4,10 +4,12 @@ import { app } from '../../api/webhook';
 import { query, pool } from '../../db/client';
 import { createTables, AuditLog } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
+import { closeMcpClient } from '../../agent/mcp_client';
 
 /**
  * Replace only the LLM provider; every graph node (load_claim, agent, tools, decide, persist)
- * runs for real so the audit trail reflects the production graph.
+ * runs for real so the audit trail reflects the production graph. Tool calls go through
+ * the project's MCP server to Postgres.
  *  - Agent model: first turn calls get_policy, then summarises.
  *  - Structured-output model: returns a fixed flag decision.
  */
@@ -66,6 +68,7 @@ describe('E2E: Audit trail for claim processing', () => {
     });
 
     afterAll(async () => {
+        await closeMcpClient();
         await pool.end();
     });
 
@@ -86,11 +89,19 @@ describe('E2E: Audit trail for claim processing', () => {
         expect(events).toContain('node_end');
         expect(events).toContain('tool_start');
 
+        // The tool call was served by the MCP server, not by in-process tool code.
+        const mcpOrigin = { mcp_server: 'InsuranceClaimMCP', mcp_transport: 'inmemory' };
+        const toolStart = rows.find((row) => row.event_type === 'tool_start');
+        expect(toolStart?.payload).toMatchObject({ tool_name: 'get_policy', ...mcpOrigin });
+
         const toolEnd = rows.find((row) => row.event_type === 'tool_end');
         expect(toolEnd).toBeDefined();
         expect(toolEnd?.node_name).toBe('tools');
-        expect(toolEnd?.payload).toMatchObject({ tool_name: 'get_policy' });
-        expect(JSON.stringify(toolEnd?.payload)).toContain('POL-TEST-001');
+        expect(toolEnd?.payload).toMatchObject({ tool_name: 'get_policy', ...mcpOrigin });
+        // The output is the MCP get_policy result: the policy row read from Postgres.
+        const output = (toolEnd?.payload as { output: { type: string; name: string; content: string } }).output;
+        expect(output).toMatchObject({ type: 'tool', name: 'get_policy' });
+        expect(JSON.parse(output.content)).toMatchObject({ id: 1, policy_number: 'POL-TEST-001', status: 'active', type: 'auto' });
 
         // Every node of the decision graph shows up in the trace, in execution order.
         const nodeStarts = rows.filter((row) => row.event_type === 'node_start').map((row) => row.node_name);

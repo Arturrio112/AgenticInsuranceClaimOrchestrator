@@ -6,7 +6,7 @@ import { LLMResult } from "@langchain/core/outputs";
 import { ChainValues } from "@langchain/core/utils/types";
 import { AuditWriter } from "./audit_writer";
 import { llmEndPayload } from "./llm_result";
-import { graphNodeOfChainRun, nodeFromMetadata, serializedName } from "./run_metadata";
+import { graphNodeOfChainRun, mcpOriginFromMetadata, nodeFromMetadata, serializedName } from "./run_metadata";
 import { RunTracker } from "./run_tracker";
 import { CallbackMetadata } from "./types";
 
@@ -127,13 +127,14 @@ export class AuditCallbackHandler extends BaseCallbackHandler {
     ): void {
         const node = nodeFromMetadata(metadata);
         const toolName = runName ?? serializedName(tool);
-        this.runs.startRun(runId, node, toolName);
-        this.writer.record("tool_start", node, { tool_name: toolName, input, tool_call_id: toolCallId });
+        const mcp = mcpOriginFromMetadata(metadata);
+        this.runs.startRun(runId, node, toolName, mcp);
+        this.writer.record("tool_start", node, { tool_name: toolName, input, tool_call_id: toolCallId, ...mcp });
     }
 
     handleToolEnd(output: unknown, runId: string): void {
-        const { node, toolName } = this.runs.endRun(runId);
-        this.writer.record("tool_end", node, { tool_name: toolName, output });
+        const { node, toolName, mcp } = this.runs.endRun(runId);
+        this.writer.record("tool_end", node, { tool_name: toolName, ...mcp, output });
     }
 
     handleToolError(err: unknown, runId: string): void {
