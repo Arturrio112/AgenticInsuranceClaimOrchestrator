@@ -41,7 +41,11 @@ jobs:
       
     - name: Type Check
       run: npx tsc --noEmit
-      
+
+    # The stdio MCP E2E test spawns the compiled server (dist/mcp/server.js).
+    - name: Build
+      run: npm run build
+
     - name: Run Unit Tests
       env:
         DATABASE_URL: postgresql://user:password@localhost:5432/insurance_db

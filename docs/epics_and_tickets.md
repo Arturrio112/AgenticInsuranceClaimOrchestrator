@@ -130,11 +130,11 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🔌 Epic 11: MCP-Native Agent Tools
 *Goal: Make the MCP server the agent's only data-access layer, so the LangGraph agent reaches Postgres exclusively through MCP tools rather than through duplicated in-process tool code.*
 
-- [ ] **Ticket 11.1: MCP Client for the Agent**
+- [x] **Ticket 11.1: MCP Client for the Agent**
   - Add an MCP client module (`src/agent/mcp_client.ts` or similar) that connects to the project's MCP server and exposes its tools as LangChain tools (e.g. via `@langchain/mcp-adapters`). The transport is configurable through `.env` (in-process by default, stdio optional).
   - Only the read-only tools (`get_policy`, `check_coverage`) are bound to the investigation. `flag_review` stays out of the agent.
   - *Dependencies:* None.
-- [ ] **Ticket 11.2: Route the Graph Through MCP**
+- [x] **Ticket 11.2: Route the Graph Through MCP**
   - Replace the duplicated tool implementations in `src/agent/nodes/tool_node.ts` with the MCP-backed tools. Keep citation verification, the audit trail and Langfuse tracing working.
   - Unit tests for the client, and E2E evals that prove a claim run reaches Postgres through MCP.
   - Update the README architecture diagram and the feature map.

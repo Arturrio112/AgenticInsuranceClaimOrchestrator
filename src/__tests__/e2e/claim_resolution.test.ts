@@ -5,6 +5,9 @@ import { ClaimListResponse, ClaimResolutionResponse, ClaimSummary } from '../../
 import { query, closePool } from '../../db/client';
 import { createTables } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { getChatModel } from '../../agent/model';
+import { closeMcpClient } from '../../agent/mcp_client';
 
 /**
  * Structured decision the fake model returns for the current test.
@@ -14,7 +17,8 @@ let mockDecision: unknown = null;
 
 /**
  * Replace only the LLM provider. Every graph node (load_claim, agent, tools,
- * decide, persist) runs for real against Postgres.
+ * decide, persist) runs for real against Postgres, and the tools node reaches
+ * Postgres through the project's MCP server (default in-memory transport).
  *  - Agent model: first turn calls get_policy + check_coverage, then summarises.
  *  - Structured-output model: returns `mockDecision`.
  */
@@ -62,6 +66,7 @@ function postClaim(claimId: number) {
 
 describe('E2E Eval Testing: Claim Resolution Workflow', () => {
     const originalThreshold = process.env.CONFIDENCE_THRESHOLD;
+    const callTool = jest.spyOn(Client.prototype, 'callTool');
 
     beforeAll(async () => {
         process.env.CONFIDENCE_THRESHOLD = '70';
@@ -86,6 +91,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
     afterAll(async () => {
         if (originalThreshold === undefined) delete process.env.CONFIDENCE_THRESHOLD;
         else process.env.CONFIDENCE_THRESHOLD = originalThreshold;
+        await closeMcpClient();
         await closePool();
     });
 
@@ -152,6 +158,23 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
         });
         expect(rows[0].decision_reasoning).toContain('within the 50000 limit');
         expect(rows[0].decided_at).toBeInstanceOf(Date);
+    });
+
+    it('investigates through the MCP server: only the read-only MCP tools are bound and called', async () => {
+        const bindTools = (getChatModel() as unknown as { bindTools: jest.Mock }).bindTools;
+        const boundTools = bindTools.mock.calls[0][0] as { name: string; metadata?: Record<string, unknown> }[];
+        expect(boundTools.map((tool) => tool.name)).toEqual(['get_policy', 'check_coverage']);
+        for (const tool of boundTools) {
+            expect(tool.metadata).toMatchObject({ mcp_server: 'InsuranceClaimMCP', mcp_transport: 'inmemory' });
+        }
+
+        // The first claim run issued both tool calls as MCP tools/call requests.
+        const calls = callTool.mock.calls.map(([params]) => [params.name, params.arguments]);
+        expect(calls).toEqual(expect.arrayContaining([
+            ['get_policy', { policy_number: 'POL-TEST-001' }],
+            ['check_coverage', { policy_type: 'auto', damage_type: 'collision' }],
+        ]));
+        expect(calls.map(([name]) => name)).not.toContain('flag_review');
     });
 
     it('routes a low-confidence decision to needs_human_review', async () => {

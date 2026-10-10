@@ -1,5 +1,13 @@
 import { Serialized } from "@langchain/core/load/serializable";
-import { CallbackMetadata } from "./types";
+import { CallbackMetadata, McpOrigin } from "./types";
+
+/** The MCP server a tool run was served by, from the tool metadata set in src/agent/mcp_client.ts. */
+export function mcpOriginFromMetadata(metadata: CallbackMetadata): McpOrigin | undefined {
+    const server = metadata?.mcp_server;
+    if (typeof server !== "string") return undefined;
+    const transport = metadata?.mcp_transport;
+    return { mcp_server: server, mcp_transport: typeof transport === "string" ? transport : null };
+}
 
 /** Class name of the serialized runnable (last segment of its id), e.g. "ChatOllama". */
 export function serializedName(serialized: Serialized | undefined): string {

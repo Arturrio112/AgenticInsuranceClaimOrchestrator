@@ -35,7 +35,7 @@ flowchart LR
 | --- | --- |
 | `load_claim` | Loads the claim and its policy number from Postgres. Ends the run if the claim does not exist. |
 | `agent` | The LLM investigates, calling `get_policy` and `check_coverage` as needed. The investigation is read-only. |
-| `tools` | Runs the requested tools against the database. |
+| `tools` | Runs the requested tools on the MCP server (`src/mcp/tools/`), which reads the database. |
 | `decide` | Asks the LLM for a structured `ClaimDecision` (`withStructuredOutput` + Zod), then keeps only citations the tools really returned. |
 | `persist` | Applies the confidence threshold and writes the final status and decision to the `claims` row. |
 
@@ -48,14 +48,16 @@ flowchart TD
     UI -->|JWT| API[Express API]
     API -->|invoke| Graph[LangGraph agent]
     Graph <-->|reason / decide| LLM[Ollama LLM]
-    Graph -->|tools + persist| DB[(PostgreSQL)]
+    Graph -->|tool calls| AgentMCP[Agent MCP client]
+    AgentMCP -->|in-memory or stdio| MCP[MCP server]
+    MCPClient([External MCP client]) -->|stdio| MCP
+    MCP -->|get_policy, check_coverage, flag_review| DB[(PostgreSQL)]
+    Graph -->|load claim + persist decision| DB
     Graph -.->|audit callback| DB
     Graph -.->|traces| Langfuse[Langfuse]
-    MCPClient([External MCP client]) -->|stdio| MCP[MCP server]
-    MCP --> DB
 ```
 
-The agent and the MCP server expose the same capabilities (`get_policy`, `check_coverage`, plus `flag_review` on MCP), but they are wired separately: the agent calls LangChain tools in-process (`src/agent/nodes/tool_node.ts`), and the MCP server (`src/mcp/`) offers the tools to external MCP clients over stdio.
+The MCP server (`src/mcp/`) is the only implementation of the agent's tools. The agent has no tool code of its own: its MCP client (`src/agent/mcp_client.ts`) connects to the server, converts the server's tools into LangChain tools with `@langchain/mcp-adapters`, and binds only the read-only ones (`get_policy`, `check_coverage`). External MCP clients reach the same server over stdio, and they also get `flag_review`. Outside of tool calls, the graph uses the repositories in `src/db/` to load the claim and to persist the final decision.
 
 ## Tech stack
 
@@ -129,6 +131,8 @@ All settings come from `.env` (see [`.env.example`](.env.example)).
 | `LLM_MODEL` | no | `llama3.1` | Model name for the chosen provider. |
 | `OLLAMA_BASE_URL` | no | `http://localhost:11434` | Where Ollama is reachable. |
 | `CONFIDENCE_THRESHOLD` | no | `70` | Decisions with a lower `confidence_score` (0-100) go to `needs_human_review`. |
+| `MCP_TRANSPORT` | no | `inmemory` | How the agent reaches the MCP server: `inmemory` (in-process) or `stdio` (spawns the compiled server). See [MCP server](#mcp-server). |
+| `MCP_SERVER_PATH` | no | `dist/mcp/server.js` | Compiled server entry point spawned when `MCP_TRANSPORT=stdio`. |
 | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | no | none | Enables Langfuse tracing when both are set. |
 | `LANGFUSE_BASEURL` | no | `https://cloud.langfuse.com` | Langfuse host, e.g. a self-hosted instance. |
 | `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` | yes (Docker) | none | PgAdmin login. |
@@ -145,7 +149,7 @@ All settings come from `.env` (see [`.env.example`](.env.example)).
 | `make logs` | Follow container logs. |
 | `make db-seed` | Create the tables and reset the demo data. |
 | `make test` | Run the unit tests. |
-| `make test-e2e` | Run the E2E evals (needs Postgres; the LLM is mocked). |
+| `make test-e2e` | Build, then run the E2E evals (needs Postgres; the LLM is mocked). |
 
 ## API reference
 
@@ -248,7 +252,7 @@ The UI is plain HTML, CSS and browser ES modules in `public/`, with no framework
 - **Audit trail:** each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`). It records these events in `audit_logs`:
   - `node_start` / `node_end`
   - `llm_start` / `llm_end`, with messages and tool calls
-  - `tool_start` / `tool_end`, with tool name, input and output
+  - `tool_start` / `tool_end`, with tool name, input and output, plus `mcp_server` / `mcp_transport` showing the call went through MCP
   - `error`
 
   Writes are queued in event order and flushed before the HTTP response returns. They never fail the claim (errors are only logged), and long strings are truncated.
@@ -260,19 +264,28 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/claims/1/audit
 
 ## MCP server
 
-`src/mcp/server.ts` runs an MCP server over stdio with three tools:
+`src/mcp/server.ts` builds the MCP server (`createMcpServer()`) with three tools. It is the data-access layer for the agent's investigation and is also available to external MCP clients.
 
-| Tool | Purpose |
-| --- | --- |
-| `get_policy` | Policy details by policy number. |
-| `check_coverage` | Coverage rule for a policy type and damage type. |
-| `flag_review` | Flags a claim for review and appends the reason to its description (write). |
+| Tool | Purpose | Bound to the agent |
+| --- | --- | --- |
+| `get_policy` | Policy details by policy number (JSON row). | yes |
+| `check_coverage` | Coverage rule for a policy type and damage type (JSON row). | yes |
+| `flag_review` | Flags a claim for review and appends the reason to its description (write). | no |
+
+**How the agent connects.** `src/agent/mcp_client.ts` opens one shared MCP connection on the first claim, loads the server's tools with `@langchain/mcp-adapters`, and keeps only the allow-listed read-only tools. `flag_review` is never bound, because claim status is written only by the `persist` node. `MCP_TRANSPORT` picks the transport:
+
+- `inmemory` (default): a fresh server runs in the API process, linked to the client by the SDK's `InMemoryTransport`. This is the real MCP protocol (`tools/list`, `tools/call`) without a second process.
+- `stdio`: the client spawns `node dist/mcp/server.js` (or `MCP_SERVER_PATH`) as a child process with the API's environment, so it uses the same database settings. Run `npm run build` first. The Docker image already contains the compiled server.
+
+The tools return their DB row as JSON text. The `decide` node parses those tool results to verify the decision's citations, so keep that format if you change a tool.
+
+**External clients.** Run the server over stdio and point any MCP client (such as Claude Desktop or the MCP Inspector) at it:
 
 ```bash
-npx ts-node src/mcp/server.ts
+npx ts-node src/mcp/server.ts    # or: node dist/mcp/server.js
 ```
 
-Point any MCP client (such as Claude Desktop or the MCP Inspector) at that command. Auth helpers are in `src/mcp/auth.ts`.
+**Auth.** The MCP tools do not take a token. Both transports are local: in-memory never leaves the API process, and stdio is a child process that the caller starts itself, so it inherits the caller's trust and environment. This follows the MCP guidance that stdio servers take credentials from the environment. The JWT helpers in `src/mcp/auth.ts` are for a future network transport (Streamable HTTP), where requests must be authenticated.
 
 ## Testing
 
@@ -282,18 +295,19 @@ make test        # unit tests: nodes, tools, repositories, routes, auth, audit, 
 make test-e2e    # E2E evals against Postgres with a mocked LLM
 ```
 
-The E2E evals (`src/__tests__/e2e/`) run the whole graph through the HTTP API. They check the final DB state, the human-review routing, citation filtering, the `sources` resolution and the audit trail. **They truncate the tables**, so point `DATABASE_URL` at a throwaway database. CI (`.github/workflows/ci.yml`) runs all of the above against a Postgres service container.
+The E2E evals (`src/__tests__/e2e/`) run the whole graph through the HTTP API, with tool calls going through the MCP server to Postgres. They check the final DB state, the human-review routing, citation filtering, the `sources` resolution, the audit trail (including the MCP origin of each tool call) and the stdio transport against the compiled server. **They truncate the tables**, so point `DATABASE_URL` at a throwaway database. CI (`.github/workflows/ci.yml`) runs all of the above against a Postgres service container.
 
 ## Project structure
 
 ```text
 src/
   agent/          LangGraph: graph.ts, state.ts, decision.ts (Zod schema), model.ts (provider switch),
-                  config.ts (threshold), prompts.ts, nodes/, callbacks/audit/
+                  mcp_client.ts (MCP tools for the agent), config.ts (threshold), prompts.ts,
+                  nodes/, callbacks/audit/
   api/            Express app (webhook.ts), routes/ (auth, claims), sources.ts, types.ts
   auth/           Shared JWT and credential handling
   db/             pg client, schema, seed, repositories (claims, sources, audit)
-  mcp/            MCP server, auth and tools/
+  mcp/            MCP server (createMcpServer + stdio entry point), auth and tools/
   utils/          logger
   __tests__/      unit, api, db, auth, agent, mcp, ui and e2e suites
 public/           Web UI (index.html, css/, js/)
@@ -304,6 +318,5 @@ See [`docs/feature_map.md`](docs/feature_map.md) for a file-by-file map and [`do
 
 ## Roadmap
 
-- **Agent tools over MCP:** have the LangGraph agent call the MCP server through an MCP client (for example `@langchain/mcp-adapters`), so the MCP server becomes the only data-access layer.
 - **Duplicate triage:** detect duplicate claims (vector similarity or SQL) to prevent double payouts.
 - **Fraud scoring:** score claims for fraud risk before auto-approving them.
