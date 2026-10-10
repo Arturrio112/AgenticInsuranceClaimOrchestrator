@@ -38,33 +38,9 @@ const checkCoverageTool = tool(
     }
 );
 
-const flagReviewTool = tool(
-    async ({ claim_id, reason }) => {
-        try {
-            const getResult = await query('SELECT description FROM claims WHERE id = $1', [claim_id]);
-            if (getResult.rows.length === 0) return `Claim with ID ${claim_id} not found.`;
-
-            const currentDescription = getResult.rows[0].description || '';
-            const newDescription = currentDescription ? `${currentDescription}\nFlagged: ${reason}` : `Flagged: ${reason}`;
-
-            await query(
-                'UPDATE claims SET status = $1, description = $2 WHERE id = $3',
-                ['flagged', newDescription, claim_id]
-            );
-            return `Successfully flagged claim ${claim_id} for review.`;
-        } catch (error) {
-            return `Error flagging claim: ${error instanceof Error ? error.message : String(error)}`;
-        }
-    },
-    {
-        name: "flag_review",
-        description: "Flag a claim for review and append a reason to its description",
-        schema: z.object({
-            claim_id: z.number().describe("The ID of the claim to flag"),
-            reason: z.string().describe("The reason for flagging the claim for review"),
-        }),
-    }
-);
-
-export const tools = [getPolicyTool, checkCoverageTool, flagReviewTool];
+// Note: flag_review is intentionally not bound to the agent. Claim status is now
+// written exclusively by the `persist` node from the structured decision, so the
+// investigation loop stays read-only. The MCP flag_review tool remains available
+// to external MCP clients (src/mcp/tools/flag_review.ts).
+export const tools = [getPolicyTool, checkCoverageTool];
 export const toolNode = new ToolNode(tools);

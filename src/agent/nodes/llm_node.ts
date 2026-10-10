@@ -1,41 +1,40 @@
-import { ChatOllama } from "@langchain/ollama";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatOpenAI } from "@langchain/openai";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
+import { AIMessageChunk, BaseMessage, SystemMessage } from "@langchain/core/messages";
+import { Runnable } from "@langchain/core/runnables";
+import { getChatModel } from "../model";
 import { GraphStateType } from "../state";
-import { SYSTEM_PROMPT } from "../prompts";
+import { SYSTEM_PROMPT, formatClaimContext } from "../prompts";
 import { tools } from "./tool_node";
 
-const provider = process.env.LLM_PROVIDER || "ollama";
-const modelName = process.env.LLM_MODEL || "llama3.1";
-const temperature = 0;
+export type ToolCallingModel = Runnable<BaseLanguageModelInput, AIMessageChunk>;
 
-let llm: any;
-
-switch (provider.toLowerCase()) {
-    case "gemini":
-        llm = new ChatGoogleGenerativeAI({ model: modelName, temperature });
-        break;
-    case "anthropic":
-        llm = new ChatAnthropic({ modelName, temperature });
-        break;
-    case "openai":
-        llm = new ChatOpenAI({ modelName, temperature });
-        break;
-    case "ollama":
-    default:
-        llm = new ChatOllama({ model: modelName, temperature, baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434" });
-        break;
+export function bindAgentTools(model: BaseChatModel): ToolCallingModel {
+    if (!model.bindTools) {
+        throw new Error("The configured chat model does not support tool calling.");
+    }
+    return model.bindTools(tools);
 }
 
-const llmWithTools = llm.bindTools(tools);
-
-export async function llmNode(state: GraphStateType) {
-    const messages = [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...state.messages,
-    ];
-    
-    const response = await llmWithTools.invoke(messages);
-    return { messages: [response] };
+/** System prompt with the claim loaded by `load_claim`, so the model never has to guess it. */
+export function buildAgentPrompt(state: GraphStateType): SystemMessage {
+    const context = state.claim ? `\n\n${formatClaimContext(state.claim)}` : "";
+    return new SystemMessage(`${SYSTEM_PROMPT}${context}`);
 }
+
+/** Factory so tests can inject a fake tool-calling model. */
+export function createLlmNode(getModel: () => ToolCallingModel) {
+    return async function llmNode(state: GraphStateType): Promise<{ messages: BaseMessage[] }> {
+        const response = await getModel().invoke([buildAgentPrompt(state), ...state.messages]);
+        return { messages: [response] };
+    };
+}
+
+let agentModel: ToolCallingModel | undefined;
+
+export const llmNode = createLlmNode(() => {
+    if (!agentModel) {
+        agentModel = bindAgentTools(getChatModel());
+    }
+    return agentModel;
+});

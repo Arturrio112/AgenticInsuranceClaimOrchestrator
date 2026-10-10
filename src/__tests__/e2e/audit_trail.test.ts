@@ -1,32 +1,47 @@
 import request from 'supertest';
+import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
 import { query, pool } from '../../db/client';
 import { createTables, AuditLog } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
 
-// Mock the LLM node: first call asks for flag_review, second call returns a summary.
-jest.mock('../../agent/nodes/llm_node', () => {
+/**
+ * Replace only the LLM provider; every graph node (load_claim, agent, tools, decide, persist)
+ * runs for real so the audit trail reflects the production graph.
+ *  - Agent model: first turn calls get_policy, then summarises.
+ *  - Structured-output model: returns a fixed flag decision.
+ */
+jest.mock('../../agent/model', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AIMessage } = require('@langchain/core/messages');
-    let callCount = 0;
+    const { AIMessage, ToolMessage } = require('@langchain/core/messages');
+
+    const agentModel = {
+        invoke: jest.fn(async (messages: BaseMessage[]) => {
+            if (!messages.some((m) => ToolMessage.isInstance(m))) {
+                return new AIMessage({
+                    content: '',
+                    tool_calls: [{ name: 'get_policy', args: { policy_number: 'POL-TEST-001' }, id: 'call_audit_1' }],
+                });
+            }
+            return new AIMessage('Investigation complete. The claim amount exceeds typical limits.');
+        }),
+    };
+    const decisionModel = {
+        invoke: jest.fn(async () => ({
+            decision: 'flag',
+            reasoning: 'Claim amount 500000 is unusually high for policy POL-TEST-001.',
+            confidence_score: 85,
+            citations: { policy_id: 1, policy_number: 'POL-TEST-001', coverage_rule_ids: [] },
+        })),
+    };
+    const chatModel = {
+        bindTools: jest.fn(() => agentModel),
+        withStructuredOutput: jest.fn(() => decisionModel),
+    };
 
     return {
-        llmNode: jest.fn().mockImplementation(async (state: { claim_id?: number }) => {
-            callCount++;
-            if (callCount === 1) {
-                return {
-                    messages: [new AIMessage({
-                        content: '',
-                        tool_calls: [{
-                            name: 'flag_review',
-                            args: { claim_id: state.claim_id || 1, reason: 'Audit trail e2e check' },
-                            id: 'call_audit_1',
-                        }],
-                    })],
-                };
-            }
-            return { messages: [new AIMessage('Investigation complete. The claim was flagged for review.')] };
-        }),
+        createChatModel: jest.fn(() => chatModel),
+        getChatModel: jest.fn(() => chatModel),
     };
 });
 
@@ -74,8 +89,12 @@ describe('E2E: Audit trail for claim processing', () => {
         const toolEnd = rows.find((row) => row.event_type === 'tool_end');
         expect(toolEnd).toBeDefined();
         expect(toolEnd?.node_name).toBe('tools');
-        expect(toolEnd?.payload).toMatchObject({ tool_name: 'flag_review' });
-        expect(JSON.stringify(toolEnd?.payload)).toContain('Successfully flagged claim 1');
+        expect(toolEnd?.payload).toMatchObject({ tool_name: 'get_policy' });
+        expect(JSON.stringify(toolEnd?.payload)).toContain('POL-TEST-001');
+
+        // Every node of the decision graph shows up in the trace, in execution order.
+        const nodeStarts = rows.filter((row) => row.event_type === 'node_start').map((row) => row.node_name);
+        expect(nodeStarts).toEqual(['load_claim', 'agent', 'tools', 'agent', 'decide', 'persist']);
 
         // Steps form a gapless sequence starting at 0.
         expect(rows.map((row) => row.step_index)).toEqual(rows.map((_, index) => index));
@@ -91,7 +110,7 @@ describe('E2E: Audit trail for claim processing', () => {
         const entries = response.body.entries as AuditLog[];
         expect(response.body.count).toBe(entries.length);
         expect(entries.length).toBeGreaterThan(0);
-        expect(entries[0]).toMatchObject({ claim_id: 1, step_index: 0, event_type: 'node_start', node_name: 'agent' });
+        expect(entries[0]).toMatchObject({ claim_id: 1, step_index: 0, event_type: 'node_start', node_name: 'load_claim' });
         expect(entries.map((entry) => entry.step_index)).toEqual(entries.map((_, index) => index));
         expect(entries.some((entry) => entry.event_type === 'tool_end' && entry.node_name === 'tools')).toBe(true);
     });

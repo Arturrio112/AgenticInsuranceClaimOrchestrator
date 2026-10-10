@@ -31,18 +31,25 @@ The project is divided into three main domains:
 
 ### 3. Orchestration Layer (`/src/agent/`)
 *Everything related to LangGraph and the LLM workflow.*
-*   **Graph State:** `src/agent/state.ts` - Defines the channels and state object passed between nodes.
+*   **Graph State:** `src/agent/state.ts` - Defines the channels and state object passed between nodes (`messages`, `claim`, `decision`, `claim_status`).
+*   **Model Factory:** `src/agent/model.ts` - Builds the typed `BaseChatModel` for `LLM_PROVIDER` (Ollama by default). The single seam tests mock to fake the LLM.
+*   **Decision Contract:** `src/agent/decision.ts` - Zod `DecisionSchema`, `ClaimDecision` type, citation cross-checking and the safe fallback decision.
+*   **Config:** `src/agent/config.ts` - `CONFIDENCE_THRESHOLD` (default 70).
 *   **Nodes:** `src/agent/nodes/`
-    *   `llm_node.ts` - The node that interacts with Ollama (Gemma2/Llama3).
-    *   `tool_node.ts` - The node that executes the MCP tools.
+    *   `load_claim_node.ts` - Loads the claim + policy number from Postgres into state before the agent runs.
+    *   `llm_node.ts` - The investigating agent (tool-calling LLM). Sees the claim details in its system prompt.
+    *   `tool_node.ts` - Executes the read-only tools (`get_policy`, `check_coverage`).
+    *   `decide_node.ts` - Structured final decision via `withStructuredOutput` + zod; invalid output falls back to `flag` / confidence 0; invented citation IDs are dropped.
+    *   `persist_node.ts` - Writes status + decision columns to `claims`; low confidence -> `needs_human_review`.
 *   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together.
-*   **Prompts:** `src/agent/prompts.ts` - System instructions for evaluating claims.
+*   **Prompts:** `src/agent/prompts.ts` - Agent system prompt, claim context formatter and decision prompt.
 *   **Audit Callback:** `src/agent/callbacks/audit_callback.ts` - `AuditCallbackHandler` that writes node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding).
 
 ### 4. API & Entry Points (`/src/api/`)
 *How the outside world triggers the workflow.*
-*   **Webhook Handler:** `src/api/webhook.ts` - Express app (exported as `app`) with the JWT-protected `POST /claim` route that triggers the LangGraph agent.
+*   **Webhook Handler:** `src/api/webhook.ts` - Express app (exported as `app`) with the JWT-protected `POST /claim` route that triggers the LangGraph agent and returns a `ClaimResolutionResponse`.
 *   **Audit API:** `GET /claims/:id/audit` in `src/api/webhook.ts` - JWT-protected (`requireAuth`), returns the ordered audit entries for a claim.
+*   **API Types:** `src/api/types.ts` - Exported request/response interfaces (shared with the UI).
 *   **Login Route:** `src/api/routes/auth.ts` - `POST /login`; validates the body (400), checks credentials (401) and issues a JWT.
 
 ### 4a. Authentication (`/src/auth/`)
@@ -59,4 +66,24 @@ The project is divided into three main domains:
 ---
 
 ## 🔄 Data Flow (Quick Reference)
-`POST /webhook` ➔ `src/api/webhook.ts` ➔ `src/agent/graph.ts` ➔ `Ollama (LLM)` ➔ `ToolCall` ➔ `src/mcp/server.ts` ➔ `src/db/client.ts` ➔ `Postgres`
+`POST /claim` ➔ `src/api/webhook.ts` ➔ `src/agent/graph.ts` ➔ `Ollama (LLM)` ➔ `ToolCall` ➔ `src/db/client.ts` ➔ `Postgres`
+
+### Graph Flow
+```
+START -> load_claim --(claim not found)--> END   (API returns 404)
+             |
+             v
+           agent <--> tools        (loop while the agent requests get_policy / check_coverage)
+             |
+             v
+           decide                  (structured output: decision, reasoning, confidence_score, citations)
+             |
+             v
+           persist -> END          (claims.status = approved | rejected | flagged,
+                                    or needs_human_review if confidence_score < CONFIDENCE_THRESHOLD)
+```
+The investigation loop is read-only; `persist` is the only node that changes a claim's status.
+
+### Claim statuses
+`pending` -> `approved` | `rejected` | `flagged` | `needs_human_review`.
+Decision columns on `claims`: `ai_decision`, `decision_reasoning`, `confidence_score`, `cited_policy_id`, `cited_rule_ids`, `decided_at`.
