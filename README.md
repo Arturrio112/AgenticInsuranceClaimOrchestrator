@@ -115,6 +115,30 @@ make db-seed    # creates the tables and inserts demo policies, coverage rules a
 
 The demo data has an auto collision claim (#1) and a home water-damage claim (#2), both `pending`.
 
+### Generating more test data
+
+```bash
+make db-generate                      # 15 claims, random seed (printed)
+make db-generate CLAIMS=30 SEED=7     # reproducible
+npm run db:generate -- --claims 30 --seed 7
+```
+
+Unlike `make db-seed`, `make db-generate` is **append-only**: it never truncates or deletes. It creates missing tables, then inserts new policies (fresh `POL-<TYPE>-<5 digits>` numbers), the coverage rules from its catalog that don't exist yet, and new `pending` claims. You can run it as often as you like. It adds rules for auto/theft, home/fire, home/theft, travel/medical and travel/baggage to the seeded auto/collision, auto/glass and home/water_damage rules; existing rules are never changed, and their limits are reused.
+
+Each claim gets its own new policy and belongs to one scenario:
+
+| Scenario | What it sets up | Expected outcome |
+| --- | --- | --- |
+| `covered` | Active policy, matching rule, amount well under the limit | approve |
+| `over_limit` | Amount above `max_coverage_amount` | reject or flag |
+| `inactive_policy` | Policy status `inactive` or `lapsed` | reject |
+| `no_rule` | Damage type with no rule (e.g. auto/mechanical_breakdown, home/earthquake, travel/trip_cancellation) | reject or flag |
+| `exclusion` | The description triggers a rule exclusion (flood water damage, collision over $1000 with no police report, theft without forced entry, pre-existing condition, ...) | reject or flag |
+| `at_limit` | Amount exactly equal to the limit | approve |
+| `ambiguous` | Vague description with no clear cause | low confidence, `needs_human_review` |
+
+The first claims cover every scenario once, so any `CLAIMS` of 7 or more includes all of them. The command prints a table of the new claims (id, policy, type, damage, amount, limit, scenario). The scenario appears only in this console output, never in the database or in the description the agent reads.
+
 ## Configuration
 
 All settings come from `.env` (see [`.env.example`](.env.example)).
@@ -148,6 +172,7 @@ All settings come from `.env` (see [`.env.example`](.env.example)).
 | `make clean` | Stop the stack, **delete the database volume**, and remove `dist/` and `node_modules/`. |
 | `make logs` | Follow container logs. |
 | `make db-seed` | Create the tables and reset the demo data. |
+| `make db-generate` | Append more test policies, coverage rules and `pending` claims (`CLAIMS=<n>`, default 15; `SEED=<n>`). Never deletes. See [Generating more test data](#generating-more-test-data). |
 | `make test` | Run the unit tests. |
 | `make test-e2e` | Build, then run the E2E evals (needs Postgres; the LLM is mocked). |
 
@@ -306,7 +331,7 @@ src/
                   nodes/, callbacks/audit/
   api/            Express app (webhook.ts), routes/ (auth, claims), sources.ts, types.ts
   auth/           Shared JWT and credential handling
-  db/             pg client, schema, seed, repositories (claims, sources, audit)
+  db/             pg client, schema, seed, test-data generator (generate.ts, generate/), repositories
   mcp/            MCP server (createMcpServer + stdio entry point), auth and tools/
   utils/          logger
   __tests__/      unit, api, db, auth, agent, mcp, ui and e2e suites
