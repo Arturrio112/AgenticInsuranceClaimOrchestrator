@@ -49,6 +49,7 @@ const DATASET: GeneratedDataset = {
             damage_type: "fire",
             claim_amount: 1234.5,
             description: "Kitchen fire",
+            described_damage_type: "fire",
             scenario: "covered",
             max_coverage_amount: 250000,
         },
@@ -58,6 +59,7 @@ const DATASET: GeneratedDataset = {
             damage_type: "glass",
             claim_amount: 300,
             description: "Cracked windshield",
+            described_damage_type: "mechanical_breakdown",
             scenario: "inactive_policy",
             max_coverage_amount: 1000,
         },
@@ -92,7 +94,7 @@ describe("generator writer", () => {
         expect(result.claims.map((c) => c.id)).toEqual([100, 101]);
     });
 
-    it("links claims to their new policy ids, inserts them as pending and never stores the scenario", async () => {
+    it("links claims to their new policy ids, inserts them as pending and never stores the scenario or described damage type", async () => {
         const { db, calls } = mockDb(happyPath(0));
         const result = await writeDataset(db, DATASET);
         expect(result.rulesInserted).toBe(0);
@@ -103,7 +105,7 @@ describe("generator writer", () => {
             [11, "300.00", "glass", "Cracked windshield"],
         ]);
         expect(claimCalls[0].text).toContain("'pending'");
-        for (const call of calls) expect(JSON.stringify(call.params)).not.toMatch(/covered|inactive_policy/);
+        for (const call of calls) expect(JSON.stringify(call.params)).not.toMatch(/covered|inactive_policy|mechanical_breakdown/);
     });
 
     it("fails loudly when a policy number was taken concurrently", async () => {
@@ -118,5 +120,11 @@ describe("generator writer", () => {
         expect(summary).toMatch(/100\s+POL-HOME-11111\s+home\s+fire\s+\$1,234\.50\s+\$250,000\.00\s+covered/);
         expect(summary).toMatch(/101\s+POL-AUTO-22222\s+auto\s+glass\s+\$300\.00\s+\$1,000\.00\s+inactive_policy/);
         expect(summary).not.toMatch(/^\s+no_rule/m);
+    });
+
+    it("tells the reader to expect human review for the low-confidence scenarios", () => {
+        const claim = { ...DATASET.claims[0], id: 7, scenario: "uncertain_cause" as const };
+        const summary = formatSummary({ policiesInserted: 1, rulesInserted: 0, claims: [claim] }, 3);
+        expect(summary).toMatch(/uncertain_cause\s+.*-> expect: low confidence -> needs_human_review/);
     });
 });

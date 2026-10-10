@@ -30,9 +30,10 @@ export function formatSummary(result: WriteResult, seed: number): string {
     const table = renderTable(["id", "policy", "type", "damage", "amount", "limit", "scenario"], rows, new Set([0, 4, 5]));
 
     const used = new Set(result.claims.map((c) => c.scenario));
+    const idWidth = Math.max(...SCENARIO_IDS.map((id) => id.length));
     const legend = SCENARIO_IDS.filter((id) => used.has(id)).map((id) => {
         const info = SCENARIOS[id];
-        return `  ${id.padEnd(16)} ${info.summary} -> expect: ${info.expected}`;
+        return `  ${id.padEnd(idWidth)}  ${info.summary} -> expect: ${info.expected}`;
     });
 
     return [

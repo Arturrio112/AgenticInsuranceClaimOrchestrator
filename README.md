@@ -135,9 +135,14 @@ Each claim gets its own new policy and belongs to one scenario:
 | `no_rule` | Damage type with no rule (e.g. auto/mechanical_breakdown, home/earthquake, travel/trip_cancellation) | reject or flag |
 | `exclusion` | The description triggers a rule exclusion (flood water damage, collision over $1000 with no police report, theft without forced entry, pre-existing condition, ...) | reject or flag |
 | `at_limit` | Amount exactly equal to the limit | approve |
-| `ambiguous` | Vague description with no clear cause | low confidence, `needs_human_review` |
+| `contradictory_damage` | The description is written for another damage type of the same policy type (e.g. filed as auto/theft, described as a chipped windshield; filed as home/fire, described as rats in the wiring) | low confidence, `needs_human_review` |
+| `uncertain_evidence` | A rule requires evidence and the claimant is unsure it exists ("I think my wife may have called the police, I'm not sure a report was filed" on a collision over $1000; "I believe the airline gave me some form") | low confidence, `needs_human_review` |
+| `uncertain_cause` | The cause could fall on either side of an exclusion (river flood or roof leak; earlier chest discomfort that may be a pre-existing condition; a property left empty "maybe six weeks, maybe nine") | low confidence, `needs_human_review` |
+| `amount_mismatch` | The description states a repair quote, invoice or receipts total of only 20-45% of `claim_amount` | low confidence, `needs_human_review` |
 
-The first claims cover every scenario once, so any `CLAIMS` of 7 or more includes all of them. The command prints a table of the new claims (id, policy, type, damage, amount, limit, scenario). The scenario appears only in this console output, never in the database or in the description the agent reads.
+The last four scenarios have facts that conflict or that the claimant isn't sure about, so the right outcome is a low `confidence_score` and a human reviewer, whatever the verdict.
+
+The first claims cover every scenario once, so any `CLAIMS` of 10 or more includes all of them. The command prints a table of the new claims (id, policy, type, damage, amount, limit, scenario). The scenario appears only in this console output, never in the database or in the description the agent reads.
 
 ## Configuration
 
@@ -174,6 +179,7 @@ All settings come from `.env` (see [`.env.example`](.env.example)).
 | `make db-seed` | Create the tables and reset the demo data. |
 | `make db-generate` | Append more test policies, coverage rules and `pending` claims (`CLAIMS=<n>`, default 15; `SEED=<n>`). Never deletes. See [Generating more test data](#generating-more-test-data). |
 | `make test` | Run the unit tests. |
+| `make eval` | Decision eval against the real LLM: append generated claims, decide each and print verdict and confidence per scenario (`CLAIMS=<n>`, `SEED=<n>`). Writes to the database. See [Decision eval](#decision-eval-real-llm). |
 | `make test-e2e` | Build, then run the E2E evals (needs Postgres; the LLM is mocked). |
 
 ## API reference
@@ -242,6 +248,7 @@ The API and the MCP server share one auth module (`src/auth/jwt.ts`). Response t
 ```
 
 - `status` is one of `approved`, `rejected`, `flagged` or `needs_human_review`. Any decision with `confidence_score` below the threshold goes to `needs_human_review`.
+- `confidence_score` comes from a checklist in the decide prompt (`src/agent/prompts.ts`) rather than the model's gut feeling, because small local models answer 100 to a one-line "be less confident when unsure" hint. The model starts at 100 and subtracts a fixed penalty for each problem: the description contradicts `damage_type`; evidence a rule condition requires is not clearly confirmed; the cause could fall under an exclusion; a figure in the description doesn't match `claim_amount`; the description is too vague (half penalty). The penalty is derived from `CONFIDENCE_THRESHOLD` (40 points at the default 70), so one conflicting fact is enough to send the claim to a human. Clear-cut cases (inactive policy, no rule, clearly over the limit, a clearly applying exclusion, a clean approval) are not problems and stay at 90-100: being sure a claim must be rejected is still high confidence. The prompt also gives the model a score table (no problems 100, only vague 80, one problem 60, two or more 20 at the default threshold), and the reasoning ends with the checklist result and score, e.g. `Checklist: D (invoice differs from claim_amount) -> 60.`
 - `confidence_threshold` is the threshold that was applied to this decision, so clients such as the web UI don't have to guess the configured value.
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
 - If the model returns malformed output, the claim is routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
@@ -318,9 +325,26 @@ npx ts-node src/mcp/server.ts    # or: node dist/mcp/server.js
 npm run lint && npx tsc --noEmit
 make test        # unit tests: nodes, tools, repositories, routes, auth, audit, UI view model
 make test-e2e    # E2E evals against Postgres with a mocked LLM
+make eval CLAIMS=22 SEED=2   # decision eval against the real LLM (see below)
 ```
 
-The E2E evals (`src/__tests__/e2e/`) run the whole graph through the HTTP API, with tool calls going through the MCP server to Postgres. They check the final DB state, the human-review routing, citation filtering, the `sources` resolution, the audit trail (including the MCP origin of each tool call) and the stdio transport against the compiled server. **They truncate the tables**, so point `DATABASE_URL` at a throwaway database. CI (`.github/workflows/ci.yml`) runs all of the above against a Postgres service container.
+The E2E evals (`src/__tests__/e2e/`) run the whole graph through the HTTP API, with tool calls going through the MCP server to Postgres. They check the final DB state, the human-review routing, citation filtering, the `sources` resolution, the audit trail (including the MCP origin of each tool call) and the stdio transport against the compiled server. **They truncate the tables**, so point `DATABASE_URL` at a throwaway database. CI (`.github/workflows/ci.yml`) runs all of the above except `make eval` against a Postgres service container.
+
+### Decision eval (real LLM)
+
+`make eval CLAIMS=<n> SEED=<n>` checks the prompt against the model you actually run (`LLM_PROVIDER` / `LLM_MODEL` / `OLLAMA_BASE_URL`). It appends a batch of claims with the [test-data generator](#generating-more-test-data), runs the whole graph on each one in turn, and prints a per-claim table and a per-scenario roll-up:
+
+```text
+scenario              n  expect  verdicts           confidence scores  hits
+--------------------  -  ------  -----------------  -----------------  ----
+covered               2  >= 70   approve x2         100, 100           2/2
+uncertain_evidence    2  < 70    flag x2            60, 60             2/2
+...
+Uncertain scenarios below 70 (needs_human_review): 8/8
+Clear-cut scenarios at or above 70: 14/14
+```
+
+The four uncertain scenarios should land below `CONFIDENCE_THRESHOLD`; the clear-cut ones at or above it. It writes claims and decisions to the database it is pointed at, so use a dev or throwaway database. It calls the LLM for real (expect 5-60 s per claim on a local model), so it is not part of `npm test` or CI. `CLAIMS=22 SEED=2` on a freshly seeded database covers every scenario at least twice. The source is in `src/evals/decision/` (the report formatting is unit-tested).
 
 ## Project structure
 
@@ -332,6 +356,7 @@ src/
   api/            Express app (webhook.ts), routes/ (auth, claims), sources.ts, types.ts
   auth/           Shared JWT and credential handling
   db/             pg client, schema, seed, test-data generator (generate.ts, generate/), repositories
+  evals/          Real-LLM decision eval (make eval): run.ts + report.ts
   mcp/            MCP server (createMcpServer + stdio entry point), auth and tools/
   utils/          logger
   __tests__/      unit, api, db, auth, agent, mcp, ui and e2e suites
