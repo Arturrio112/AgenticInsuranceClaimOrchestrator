@@ -144,6 +144,7 @@ describe("claims routes", () => {
                 claim: { id: 1 },
                 decision: DECISION,
                 claim_status: "approved",
+                confidence_threshold: 70,
                 messages: [new AIMessage("Investigation complete.")],
             });
             mockGetClaimById.mockResolvedValue(CLAIM);
@@ -162,6 +163,7 @@ describe("claims routes", () => {
                 summary: "Investigation complete.",
                 claim: CLAIM,
                 sources: SOURCES,
+                confidence_threshold: 70,
             });
             expect(mockResolveSources).toHaveBeenCalledWith(DECISION.citations);
         });
@@ -171,6 +173,7 @@ describe("claims routes", () => {
                 claim: { id: 1 },
                 decision: DECISION,
                 claim_status: "approved",
+                confidence_threshold: 70,
                 messages: [],
             });
             mockGetClaimById.mockResolvedValue(null);

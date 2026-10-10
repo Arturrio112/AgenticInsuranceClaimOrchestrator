@@ -21,6 +21,7 @@ function makeState(overrides: Partial<GraphStateType> = {}): GraphStateType {
         },
         decision: null,
         claim_status: "pending",
+        confidence_threshold: 70,
         messages: [
             new HumanMessage("Please investigate claim 1."),
             new AIMessage({

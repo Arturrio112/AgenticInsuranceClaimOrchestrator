@@ -39,6 +39,10 @@ export const GraphState = Annotation.Root({
     claim_status: Annotation<ClaimStatus>({
         reducer: (state, update) => update ?? state,
     }),
+    /** Confidence threshold the `persist` node applied when choosing `claim_status`. */
+    confidence_threshold: Annotation<number>({
+        reducer: (state, update) => update ?? state,
+    }),
 });
 
 export type GraphStateType = typeof GraphState.State;

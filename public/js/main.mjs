@@ -18,6 +18,7 @@ import {
     formatElapsed,
     humanize,
     statusMeta,
+    thresholdOf,
 } from "./view-model.mjs";
 
 /** @typedef {import("./view-model.mjs").ClaimSummary} ClaimSummary */
@@ -335,7 +336,7 @@ async function runInvestigation() {
         state.results.set(claimId, result);
         upsertClaim(result.claim ? { ...result.claim, status: result.status } : { ...claim, status: result.status });
         const label = statusMeta(result.status).label;
-        announce(`Claim ${claimId} investigated: ${label}. Confidence ${confidenceBand(result.decision.confidence_score).value} out of 100.`);
+        announce(`Claim ${claimId} investigated: ${label}. Confidence ${confidenceBand(result.decision.confidence_score, thresholdOf(result)).value} out of 100.`);
         renderList();
         renderCase();
         if (state.selectedId === claimId) els.result.focus({ preventScroll: false });

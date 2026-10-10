@@ -28,6 +28,7 @@ function state(d: ClaimDecision | null): GraphStateType {
         claim: null,
         decision: d,
         claim_status: "pending",
+        confidence_threshold: 70,
     };
 }
 
@@ -84,6 +85,7 @@ describe("persist node", () => {
         const update = await persistNode(state(decision()));
 
         expect(update.claim_status).toBe("approved");
+        expect(update.confidence_threshold).toBe(70);
         const [sql, params] = (query as jest.Mock).mock.calls[0];
         expect(sql).toContain("UPDATE claims");
         expect(sql).toContain("decided_at = NOW()");
@@ -96,6 +98,7 @@ describe("persist node", () => {
         const update = await persistNode(state(decision({ confidence_score: 90 })));
 
         expect(update.claim_status).toBe("needs_human_review");
+        expect(update.confidence_threshold).toBe(95);
         expect((query as jest.Mock).mock.calls[0][1][0]).toBe("needs_human_review");
     });
 

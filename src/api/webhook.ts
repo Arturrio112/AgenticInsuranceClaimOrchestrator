@@ -65,7 +65,7 @@ app.post("/claim", requireAuth, async (
             res.status(404).json({ error: `Claim ${claimId} not found` });
             return;
         }
-        if (!result.decision || !result.claim_status) {
+        if (!result.decision || !result.claim_status || result.confidence_threshold === undefined) {
             throw new Error("Graph finished without a persisted decision");
         }
 
@@ -87,6 +87,7 @@ app.post("/claim", requireAuth, async (
             summary: lastAgentMessage ? messageText(lastAgentMessage.content) : "",
             claim: persistedClaim,
             sources,
+            confidence_threshold: result.confidence_threshold,
         };
 
         logger.info(`Claim processed successfully`, { claim_id: claimId, status: response.status });

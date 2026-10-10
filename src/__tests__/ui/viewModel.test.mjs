@@ -22,6 +22,7 @@ import {
     sortClaims,
     sourceOfTruth,
     statusMeta,
+    thresholdOf,
     verdictSummary,
 } from "../../../public/js/view-model.mjs";
 
@@ -165,6 +166,17 @@ describe("confidenceBand", () => {
     });
 });
 
+describe("thresholdOf", () => {
+    it("prefers the threshold returned by the API", () => {
+        expect(thresholdOf(response({ confidence_threshold: 85 }))).toBe(85);
+    });
+
+    it("falls back to the default when the field is missing or invalid", () => {
+        expect(thresholdOf(response())).toBe(CONFIDENCE_THRESHOLD);
+        expect(thresholdOf(response({ confidence_threshold: "85" }))).toBe(CONFIDENCE_THRESHOLD);
+    });
+});
+
 describe("verdictSummary", () => {
     it("explains an auto-applied decision", () => {
         const summary = verdictSummary(response());
@@ -179,6 +191,15 @@ describe("verdictSummary", () => {
             "The agent leaned towards rejecting this claim, but its confidence (55) is below 70, so a person needs to make the call.",
         );
         expect(summary.agentVerdict).toBe("Reject");
+    });
+
+    it("uses the threshold the API reports", () => {
+        const summary = verdictSummary(
+            response({ status: "needs_human_review", confidence_threshold: 85 }, { decision: "approve", confidence_score: 80 }),
+        );
+        expect(summary.sentence).toBe(
+            "The agent leaned towards approving this claim, but its confidence (80) is below 85, so a person needs to make the call.",
+        );
     });
 
     it("explains the fallback path", () => {

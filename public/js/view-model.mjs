@@ -49,13 +49,24 @@
  *   citations: { policy_id: number | null, policy_number: string | null, coverage_rule_ids: number[] } }} decision
  * @property {ClaimSummary} [claim]
  * @property {{ policy: PolicySource | null, coverage_rules: CoverageRuleSource[] }} [sources]
+ * @property {number} [confidence_threshold]
  */
 
 /**
- * Mirrors DEFAULT_CONFIDENCE_THRESHOLD in src/agent/config.ts. The API does not
- * expose the configured value, so the UI assumes the default.
+ * Mirrors DEFAULT_CONFIDENCE_THRESHOLD in src/agent/config.ts. Only used when a
+ * response lacks `confidence_threshold`; otherwise the API's value wins.
  */
 export const CONFIDENCE_THRESHOLD = 70;
+
+/**
+ * The threshold the backend applied to this result.
+ * @param {ClaimResolutionResponse} result
+ * @returns {number}
+ */
+export function thresholdOf(result) {
+    const t = result.confidence_threshold;
+    return typeof t === "number" && Number.isFinite(t) ? t : CONFIDENCE_THRESHOLD;
+}
 
 /** @type {Record<ClaimStatus, { label: string, short: string, tone: Tone, icon: string, meaning: string }>} */
 const STATUS_META = {
@@ -251,7 +262,7 @@ export function confidenceBand(score, threshold = CONFIDENCE_THRESHOLD) {
 export function verdictSummary(result) {
     const meta = statusMeta(result.status);
     const verdict = verdictMeta(result.decision.decision);
-    const confidence = confidenceBand(result.decision.confidence_score);
+    const confidence = confidenceBand(result.decision.confidence_score, thresholdOf(result));
 
     let sentence;
     if (result.decision.fallback) {

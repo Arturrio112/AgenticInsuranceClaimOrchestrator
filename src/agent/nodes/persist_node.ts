@@ -25,7 +25,7 @@ export function resolveFinalStatus(decision: ClaimDecision, threshold: number): 
 /** Writes the final status and the structured decision to the `claims` row. */
 export async function persistNode(
     state: GraphStateType
-): Promise<{ claim_status: ClaimStatus; decision: ClaimDecision }> {
+): Promise<{ claim_status: ClaimStatus; decision: ClaimDecision; confidence_threshold: number }> {
     const decision = state.decision ?? fallbackDecision("no decision was produced");
     const threshold = getConfidenceThreshold();
     const status = resolveFinalStatus(decision, threshold);
@@ -59,5 +59,5 @@ export async function persistNode(
         threshold,
     });
 
-    return { claim_status: status, decision };
+    return { claim_status: status, decision, confidence_threshold: threshold };
 }

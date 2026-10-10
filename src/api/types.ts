@@ -26,6 +26,8 @@ export interface ClaimResolutionResponse {
     claim: ClaimSummary;
     /** `decision.citations` resolved to full DB rows. Unknown IDs are silently dropped. */
     sources: DecisionSources;
+    /** The CONFIDENCE_THRESHOLD (0-100) applied when choosing `status`. */
+    confidence_threshold: number;
 }
 
 /**

@@ -118,11 +118,13 @@ npx ts-node src/db/seed.ts
         "conditions": "Requires police report if over $1000"
       }
     ]
-  }
+  },
+  "confidence_threshold": 70
 }
 ```
 
 - `status` is one of `approved`, `rejected`, `flagged`, or `needs_human_review`. Any decision with `confidence_score` below `CONFIDENCE_THRESHOLD` (default `70`) goes to `needs_human_review`.
+- `confidence_threshold` is the threshold that was applied to this decision, so clients (like the web UI) never have to guess the configured value.
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
 - If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
 - `claim` is the claim as stored *after* the decision was persisted, so `claim.status` matches `status`.

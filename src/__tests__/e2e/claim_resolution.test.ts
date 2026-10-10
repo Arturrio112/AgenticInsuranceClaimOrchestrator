@@ -104,6 +104,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
         expect(body).toEqual({
             claim_id: 1,
             status: 'approved',
+            confidence_threshold: 70,
             decision: {
                 decision: 'approve',
                 reasoning: expect.stringContaining('within the 50000 limit'),
@@ -168,6 +169,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
         expect(body.claim.status).toBe('needs_human_review');
         expect(body.decision.decision).toBe('approve');
         expect(body.decision.confidence_score).toBe(45);
+        expect(body.confidence_threshold).toBe(70);
 
         const { rows } = await query('SELECT status, ai_decision, confidence_score FROM claims WHERE id = 2');
         expect(rows[0]).toEqual({ status: 'needs_human_review', ai_decision: 'approve', confidence_score: 45 });

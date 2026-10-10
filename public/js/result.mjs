@@ -1,7 +1,7 @@
 // @ts-check
 /** Renders the outcome of an investigation into the case panel. */
 import { append, clear, h, icon } from "./dom.mjs";
-import { confidenceBand, sourceOfTruth, statusMeta, verdictSummary } from "./view-model.mjs";
+import { confidenceBand, sourceOfTruth, statusMeta, thresholdOf, verdictSummary } from "./view-model.mjs";
 
 /** @typedef {import("./view-model.mjs").ClaimResolutionResponse} ClaimResolutionResponse */
 
@@ -30,7 +30,7 @@ function verdictBlock(result) {
 
 /** @param {ClaimResolutionResponse} result */
 function confidenceBlock(result) {
-    const band = confidenceBand(result.decision.confidence_score);
+    const band = confidenceBand(result.decision.confidence_score, thresholdOf(result));
     return h(
         "div",
         { class: `confidence band-${band.band}` },

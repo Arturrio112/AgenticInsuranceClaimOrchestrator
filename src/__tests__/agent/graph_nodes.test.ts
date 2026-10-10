@@ -29,6 +29,7 @@ function baseState(overrides: Partial<GraphStateType> = {}): GraphStateType {
         claim,
         decision: null,
         claim_status: "pending",
+        confidence_threshold: 70,
         ...overrides,
     };
 }
