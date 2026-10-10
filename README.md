@@ -96,14 +96,54 @@ npx ts-node src/db/seed.ts
     "citations": { "policy_id": 1, "policy_number": "POL-AUTO-12345", "coverage_rule_ids": [1] },
     "fallback": false
   },
-  "summary": "Investigation complete. ..."
+  "summary": "Investigation complete. ...",
+  "claim": {
+    "id": 1,
+    "policy_number": "POL-AUTO-12345",
+    "policy_type": "auto",
+    "claim_amount": 1500,
+    "damage_type": "collision",
+    "status": "approved",
+    "description": "Fender bender in parking lot",
+    "created_at": "2026-01-02T03:04:05.000Z"
+  },
+  "sources": {
+    "policy": { "id": 1, "policy_number": "POL-AUTO-12345", "status": "active", "type": "auto" },
+    "coverage_rules": [
+      {
+        "id": 1,
+        "policy_type": "auto",
+        "damage_type": "collision",
+        "max_coverage_amount": 50000,
+        "conditions": "Requires police report if over $1000"
+      }
+    ]
+  }
 }
 ```
 
 - `status` is one of `approved`, `rejected`, `flagged`, or `needs_human_review`. Any decision with `confidence_score` below `CONFIDENCE_THRESHOLD` (default `70`) goes to `needs_human_review`.
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
 - If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
+- `claim` is the claim as stored *after* the decision was persisted, so `claim.status` matches `status`.
+- `sources` is the "source of truth" for the decision: the cited policy and coverage rules loaded from Postgres. The policy is resolved by `policy_id`, falling back to `policy_number`. Cited IDs that do not exist are silently left out.
 - The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
+
+### Listing claims
+
+Both endpoints require the same `Authorization: Bearer <token>` header as `/claim`:
+
+| Method & path | Response |
+| --- | --- |
+| `GET /claims` | `200 { "claims": ClaimSummary[] }`, ordered by `id` ascending |
+| `GET /claims/:id` | `200 ClaimSummary`, `400 { "error" }` if `id` is not a positive integer, `404 { "error" }` if the claim does not exist |
+
+```bash
+curl localhost:3000/claims -H "Authorization: Bearer $TOKEN"
+curl localhost:3000/claims/1 -H "Authorization: Bearer $TOKEN"
+```
+
+`ClaimSummary` has the same shape as `claim` above: `claim_amount` is a number (not the DECIMAL string Postgres returns) and `created_at` is an ISO 8601 string.
 
 ## Audit Trail
 Each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`) that records
