@@ -16,7 +16,8 @@ The project is divided into three main domains:
 ### 1. Database & Infrastructure (`/src/db/`)
 *Everything related to data persistence and schemas.*
 *   **Schema Definitions:** `src/db/schema.ts` (or `.sql` files in `/scripts/`) - Defines the `policies`, `coverage_rules`, and `claims` tables.
-*   **Database Client:** `src/db/client.ts` - The connection logic to PostgreSQL (using `pg` or an ORM like Prisma).
+*   **Database Client:** `src/db/client.ts` - The connection logic to PostgreSQL (`pg` pool, created lazily on first query; `closePool()` shuts it down).
+*   **Database Config:** `src/db/config.ts` - `getDbConfig()` validates the connection settings: `DATABASE_URL`, or `DB_USER`/`DB_PASSWORD`/`DB_NAME` (no credential fallbacks; only `DB_HOST`/`DB_PORT` default). Called at startup in `src/index.ts` so the app fails fast.
 *   **Seed Data:** `scripts/seed.ts` - Scripts to populate the database with mock insurance data.
 *   **Audit Trail:** `src/db/schema.ts` defines the append-only `audit_logs` table (trigger rejects UPDATE/DELETE); `src/db/audit_repository.ts` exposes only `insertAuditLog` and `getAuditLogsForClaim`.
 

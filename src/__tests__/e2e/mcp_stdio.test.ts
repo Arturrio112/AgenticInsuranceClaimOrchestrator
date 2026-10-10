@@ -2,7 +2,7 @@ import path from 'path';
 import { existsSync } from 'fs';
 import { ToolMessage } from '@langchain/core/messages';
 import { connectMcp, loadAgentTools, McpConnection } from '../../agent/mcp_client';
-import { query, pool } from '../../db/client';
+import { query, closePool } from '../../db/client';
 import { createTables } from '../../db/schema';
 
 /**
@@ -34,7 +34,7 @@ describe('E2E: agent tools over the stdio MCP transport', () => {
 
     afterAll(async () => {
         await connection?.close();
-        await pool.end();
+        await closePool();
     });
 
     async function call(name: string, args: Record<string, unknown>): Promise<unknown> {

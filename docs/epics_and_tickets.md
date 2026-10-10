@@ -119,7 +119,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 🔐 Epic 10: Secrets Hygiene
 *Goal: Comply with the "no hardcoded secrets" rule (AGENTS.md §9). Every credential comes from `.env`, and the system fails fast and clearly when one is missing.*
 
-- [ ] **Ticket 10.1: Remove Hardcoded Credential Fallbacks**
+- [x] **Ticket 10.1: Remove Hardcoded Credential Fallbacks**
   - Remove the default credentials from `docker-compose.yml` (`${DB_USER:-admin}`, `${DB_PASSWORD:-password123}`, `${PGADMIN_EMAIL:-admin@example.com}`, `${PGADMIN_PASSWORD:-admin}`, and the derived `DATABASE_URL`) in favour of required variables (`${VAR:?message}`).
   - Remove the `postgres`/`postgres` fallbacks in `src/db/client.ts`, validate the DB configuration at startup like the auth settings, and add unit tests.
   - Keep `.env.example`, the README configuration table and CI in sync.
