@@ -1,4 +1,6 @@
-.PHONY: up down build logs db-seed test test-e2e clean
+.PHONY: up down build logs db-seed db-generate test test-e2e clean
+
+CLAIMS ?= 15
 
 up:
 	docker-compose up -d
@@ -18,6 +20,9 @@ logs:
 
 db-seed:
 	npx ts-node src/db/seed.ts
+
+db-generate: ## Append test policies, rules and pending claims (never deletes). Usage: make db-generate CLAIMS=20 SEED=7
+	npx ts-node src/db/generate.ts --claims $(CLAIMS)$(if $(SEED), --seed $(SEED))
 
 test:
 	npm test

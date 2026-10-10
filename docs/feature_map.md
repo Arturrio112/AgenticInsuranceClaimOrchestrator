@@ -18,7 +18,12 @@ The project is divided into three main domains:
 *   **Schema Definitions:** `src/db/schema.ts` (or `.sql` files in `/scripts/`) - Defines the `policies`, `coverage_rules`, and `claims` tables.
 *   **Database Client:** `src/db/client.ts` - The connection logic to PostgreSQL (`pg` pool, created lazily on first query; `closePool()` shuts it down).
 *   **Database Config:** `src/db/config.ts` - `getDbConfig()` validates the connection settings: `DATABASE_URL`, or `DB_USER`/`DB_PASSWORD`/`DB_NAME` (no credential fallbacks; only `DB_HOST`/`DB_PORT` default). Called at startup in `src/index.ts` so the app fails fast.
-*   **Seed Data:** `scripts/seed.ts` - Scripts to populate the database with mock insurance data.
+*   **Seed Data:** `src/db/seed.ts` - Truncates the tables and inserts the demo policies, coverage rules and claims (`make db-seed`).
+*   **Test-Data Generator:** [x] `src/db/generate.ts` (`make db-generate CLAIMS=<n> SEED=<n>`, `npm run db:generate`) - Append-only (never truncates or deletes): adds new policies, missing catalog coverage rules and `pending` claims covering the scenarios covered / over_limit / inactive_policy / no_rule / exclusion / at_limit / ambiguous, and prints a summary table.
+    *   `src/db/generate/catalog.ts` - Rule catalog (auto, home, travel), uncovered damage types and natural-language description templates.
+    *   `src/db/generate/scenarios.ts` - Pure, seeded (mulberry32) scenario builders; `generateDataset()` respects existing rules' limits and taken policy numbers.
+    *   `src/db/generate/args.ts`, `summary.ts`, `writer.ts` - CLI parsing, console summary and the INSERT-only DB writer (run in one transaction).
+    *   Tests: `src/__tests__/db/generate/`.
 *   **Audit Trail:** `src/db/schema.ts` defines the append-only `audit_logs` table (trigger rejects UPDATE/DELETE); `src/db/audit_repository.ts` exposes only `insertAuditLog` and `getAuditLogsForClaim`.
 
 ### 2. MCP Server Layer (`/src/mcp/`)
