@@ -106,7 +106,7 @@ npx ts-node src/db/seed.ts
 - The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
 
 ## Audit Trail
-Each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit_callback.ts`) that records
+Each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`) that records
 `node_start`/`node_end`, `llm_start`/`llm_end` (messages and tool calls), `tool_start`/`tool_end` (tool name, input, output)
 and `error` events into `audit_logs`. Writes are queued in event order, flushed before the HTTP response returns,
 and never fail the claim (errors are only logged). Long strings in payloads are truncated.

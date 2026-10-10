@@ -5,11 +5,10 @@ import { Serialized } from '@langchain/core/load/serializable';
 import { ChatGeneration } from '@langchain/core/outputs';
 import { StateGraph, START, END, Annotation, MessagesAnnotation } from '@langchain/langgraph';
 import { z } from 'zod';
-import { AuditCallbackHandler, MAX_STRING_LENGTH, toJsonSafe, truncateString } from '../../agent/callbacks/audit_callback';
-import { insertAuditLog, NewAuditLog } from '../../db/audit_repository';
-import { logger } from '../../utils/logger';
+import { AuditCallbackHandler, MAX_STRING_LENGTH } from '../../../agent/callbacks/audit';
+import { insertAuditLog, NewAuditLog } from '../../../db/audit_repository';
 
-jest.mock('../../db/audit_repository', () => ({
+jest.mock('../../../db/audit_repository', () => ({
     insertAuditLog: jest.fn(),
 }));
 
@@ -120,32 +119,6 @@ describe('AuditCallbackHandler', () => {
         expect(payload.input.length).toBeLessThan(huge.length);
     });
 
-    it('swallows DB failures, logs them and keeps writing later entries', async () => {
-        const errorSpy = jest.spyOn(logger, 'error').mockImplementation(() => undefined);
-        insertMock.mockRejectedValueOnce(new Error('connection refused'));
-        const handler = new AuditCallbackHandler(1);
-
-        handler.handleToolStart(serialized, 'a', 'tool-1', undefined, [], {}, 'get_policy');
-        handler.handleToolEnd('ok', 'tool-1');
-        await expect(handler.flush()).resolves.toBeUndefined();
-
-        expect(insertMock).toHaveBeenCalledTimes(2);
-        expect(errorSpy).toHaveBeenCalledWith('Failed to write audit log entry', expect.objectContaining({
-            event_type: 'tool_start',
-            error: 'connection refused',
-        }));
-        errorSpy.mockRestore();
-    });
-
-    it('does nothing for an invalid claim id', async () => {
-        const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
-        const handler = new AuditCallbackHandler(Number.NaN);
-        handler.handleToolStart(serialized, 'a', 'tool-1', undefined, [], {}, 'get_policy');
-        await handler.flush();
-        expect(insertMock).not.toHaveBeenCalled();
-        warnSpy.mockRestore();
-    });
-
     it('captures node, llm and tool events from a real LangGraph run', async () => {
         const echoTool = tool(async ({ text }: { text: string }) => `echo: ${text}`, {
             name: 'echo',
@@ -166,6 +139,8 @@ describe('AuditCallbackHandler', () => {
             .compile();
 
         const handler = new AuditCallbackHandler(3, 'graph-run');
+        expect(handler.claimId).toBe(3);
+        expect(handler.runId).toBe('graph-run');
         await graph.invoke({ messages: [new HumanMessage('hello')] }, { callbacks: [handler] });
         await handler.flush();
 
@@ -175,17 +150,5 @@ describe('AuditCallbackHandler', () => {
             'node_start:agent', 'llm_start:agent', 'llm_end:agent', 'node_end:agent',
         ]);
         expect(entries[2].payload).toMatchObject({ tool_name: 'echo', output: 'echo: hi' });
-    });
-});
-
-describe('toJsonSafe', () => {
-    it('handles cycles, dates, undefined and non-finite numbers', () => {
-        const cyclic: Record<string, unknown> = { a: 1, when: new Date('2026-01-01T00:00:00Z'), skip: undefined, n: Infinity };
-        cyclic.self = cyclic;
-        expect(toJsonSafe(cyclic)).toEqual({ a: 1, when: '2026-01-01T00:00:00.000Z', n: 'Infinity', self: '[circular]' });
-    });
-
-    it('leaves short strings untouched', () => {
-        expect(truncateString('short')).toBe('short');
     });
 });

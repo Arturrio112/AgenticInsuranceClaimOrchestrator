@@ -43,7 +43,14 @@ The project is divided into three main domains:
     *   `persist_node.ts` - Writes status + decision columns to `claims`; low confidence -> `needs_human_review`.
 *   **Graph Routing:** `src/agent/graph.ts` - The edges and conditional routing logic binding the nodes together.
 *   **Prompts:** `src/agent/prompts.ts` - Agent system prompt, claim context formatter and decision prompt.
-*   **Audit Callback:** `src/agent/callbacks/audit_callback.ts` - `AuditCallbackHandler` that writes node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding).
+*   **Audit Trail:** `src/agent/callbacks/audit/` - Records node/LLM/tool/error events of a run into `audit_logs` (call `flush()` before responding). Import from the folder's `index.ts`.
+    *   `audit_callback_handler.ts` - `AuditCallbackHandler`: maps LangChain/LangGraph callback events to audit records.
+    *   `audit_writer.ts` - `AuditWriter`: step indexes, ordered write queue, swallows and logs DB failures.
+    *   `run_tracker.ts` - Remembers which graph node / tool each in-flight run belongs to.
+    *   `run_metadata.ts` - Reads node names and model/tool names from callback metadata and tags.
+    *   `llm_result.ts` - Builds the `llm_end` payload (messages, tool calls, provider output).
+    *   `json_safe.ts` - Converts payloads to JSONB-safe values (truncation, cycles, depth limit).
+    *   `types.ts` - Shared payload/metadata/run-context types.
 
 ### 4. API & Entry Points (`/src/api/`)
 *How the outside world triggers the workflow.*

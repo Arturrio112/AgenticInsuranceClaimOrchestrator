@@ -5,7 +5,7 @@ import { messageText } from "../agent/decision";
 import { ClaimRequest, ClaimResolutionResponse, ErrorResponse } from "./types";
 import { CallbackHandler } from "langfuse-langchain";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
-import { AuditCallbackHandler } from "../agent/callbacks/audit_callback";
+import { AuditCallbackHandler } from "../agent/callbacks/audit";
 import { getAuditLogsForClaim } from "../db/audit_repository";
 import { logger } from "../utils/logger";
 import path from "path";
