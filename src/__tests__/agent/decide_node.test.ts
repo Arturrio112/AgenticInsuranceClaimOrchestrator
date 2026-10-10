@@ -1,5 +1,10 @@
-import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
-import { createDecideNode, buildDecisionTranscript, DecisionModel } from "../../agent/nodes/decide_node";
+import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
+import {
+    createDecideNode,
+    buildDecisionPrompt,
+    buildDecisionTranscript,
+    DecisionModel,
+} from "../../agent/nodes/decide_node";
 import { GraphStateType } from "../../agent/state";
 
 jest.mock("../../utils/logger", () => ({
@@ -144,6 +149,29 @@ describe("decide node", () => {
             policy_number: "POL-AUTO-12345",
             coverage_rule_ids: [],
         });
+    });
+});
+
+describe("buildDecisionPrompt", () => {
+    const original = process.env.CONFIDENCE_THRESHOLD;
+    afterEach(() => {
+        if (original === undefined) delete process.env.CONFIDENCE_THRESHOLD;
+        else process.env.CONFIDENCE_THRESHOLD = original;
+    });
+
+    it("puts the confidence checklist with the configured threshold in the system message", () => {
+        process.env.CONFIDENCE_THRESHOLD = "80";
+        const [system, human] = buildDecisionPrompt(makeState());
+        expect(SystemMessage.isInstance(system)).toBe(true);
+        expect(system.content).toContain("CONFIDENCE CHECKLIST");
+        expect(system.content).toContain("If the result is below 80, the claim goes to a human reviewer");
+        expect(human.content).toContain("- description: Fender bender");
+    });
+
+    it("uses the default threshold of 70 when none is configured", () => {
+        delete process.env.CONFIDENCE_THRESHOLD;
+        const [system] = buildDecisionPrompt(makeState());
+        expect(system.content).toContain("If the result is below 70");
     });
 });
 

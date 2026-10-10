@@ -15,12 +15,18 @@ export const DecisionSchema = z.object({
     reasoning: z
         .string()
         .min(1)
-        .describe("Two to four sentences explaining the decision, referring to the policy status, coverage rule and claim amount."),
+        .describe(
+            "Two to four sentences explaining the decision, referring to the policy status, coverage rule and claim amount, " +
+                'ending with the checklist problems found and the resulting score, e.g. "Checklist: none -> 100."'
+        ),
     confidence_score: z
         .number()
         .min(0)
         .max(100)
-        .describe("Integer from 0 to 100. How confident you are in the decision. 100 = certain."),
+        .describe(
+            "Integer from 0 to 100: start at 100 and subtract the points of every confidence-checklist problem " +
+                "(conflicting or unconfirmed facts). Clear-cut decisions, including clear rejections, stay high."
+        ),
     citations: z
         .object({
             policy_id: z

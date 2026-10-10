@@ -1,7 +1,8 @@
 import { BaseLanguageModelInput } from "@langchain/core/language_models/base";
 import { AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { getChatModel } from "../model";
-import { DECISION_PROMPT, formatClaimContext } from "../prompts";
+import { buildDecisionSystemPrompt, formatClaimContext } from "../prompts";
+import { getConfidenceThreshold } from "../config";
 import { GraphStateType } from "../state";
 import {
     ClaimDecision,
@@ -38,7 +39,7 @@ export function buildDecisionTranscript(messages: BaseMessage[]): string {
 export function buildDecisionPrompt(state: GraphStateType): BaseMessage[] {
     const claim = state.claim ? formatClaimContext(state.claim) : `CLAIM:\n- claim_id: ${state.claim_id}`;
     return [
-        new SystemMessage(DECISION_PROMPT),
+        new SystemMessage(buildDecisionSystemPrompt(getConfidenceThreshold())),
         new HumanMessage(`${claim}\n\nTOOL RESULTS:\n${buildDecisionTranscript(state.messages)}\n\nReturn the decision now.`),
     ];
 }
