@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
-import { ClaimResolutionResponse } from '../../api/types';
+import { ClaimListResponse, ClaimResolutionResponse, ClaimSummary } from '../../api/types';
 import { query, pool } from '../../db/client';
 import { createTables } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
@@ -112,7 +112,32 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
                 fallback: false,
             },
             summary: expect.stringContaining('Investigation complete'),
+            // The claim as persisted (status already updated)
+            claim: {
+                id: 1,
+                policy_number: 'POL-TEST-001',
+                policy_type: 'auto',
+                claim_amount: 1500,
+                damage_type: 'collision',
+                status: 'approved',
+                description: 'Fender bender in parking lot',
+                created_at: expect.any(String),
+            },
+            // Citations resolved to full DB rows; the invented rule 999 is absent
+            sources: {
+                policy: { id: 1, policy_number: 'POL-TEST-001', status: 'active', type: 'auto' },
+                coverage_rules: [
+                    {
+                        id: 1,
+                        policy_type: 'auto',
+                        damage_type: 'collision',
+                        max_coverage_amount: 50000,
+                        conditions: 'Requires police report if over $1000',
+                    },
+                ],
+            },
         });
+        expect(new Date(body.claim.created_at).toISOString()).toBe(body.claim.created_at);
 
         const { rows } = await query(
             'SELECT status, ai_decision, decision_reasoning, confidence_score, cited_policy_id, cited_rule_ids, decided_at FROM claims WHERE id = 1'
@@ -140,6 +165,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
         const body = response.body as ClaimResolutionResponse;
 
         expect(body.status).toBe('needs_human_review');
+        expect(body.claim.status).toBe('needs_human_review');
         expect(body.decision.decision).toBe('approve');
         expect(body.decision.confidence_score).toBe(45);
 
@@ -155,6 +181,24 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
 
         expect(body.status).toBe('needs_human_review');
         expect(body.decision).toMatchObject({ decision: 'flag', confidence_score: 0, fallback: true });
+        // The fallback cites nothing, so there is nothing to resolve
+        expect(body.sources).toEqual({ policy: null, coverage_rules: [] });
+    });
+
+    it('lists claims and fetches a single claim with the persisted status', async () => {
+        const token = signToken({ sub: 'test_user' });
+
+        const list = await request(app).get('/claims').set('Authorization', `Bearer ${token}`).expect(200);
+        const claims = (list.body as ClaimListResponse).claims;
+        expect(claims.map((c) => [c.id, c.status, c.claim_amount])).toEqual([
+            [1, 'approved', 1500],
+            [2, 'needs_human_review', 49000],
+        ]);
+
+        const single = await request(app).get('/claims/1').set('Authorization', `Bearer ${token}`).expect(200);
+        expect(single.body as ClaimSummary).toEqual(claims[0]);
+
+        await request(app).get('/claims/12345').set('Authorization', `Bearer ${token}`).expect(404);
     });
 
     it('returns 404 for an unknown claim', async () => {
