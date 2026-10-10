@@ -82,7 +82,9 @@ The agent and the MCP server expose the same capabilities (`get_policy`, `check_
 
 ```bash
 cp .env.example .env
-# Edit .env: set JWT_SECRET, AUTH_USERNAME and AUTH_PASSWORD (the app will not start with them missing)
+# Edit .env: replace every change-me value (JWT_SECRET, AUTH_USERNAME/AUTH_PASSWORD,
+# DB_USER/DB_PASSWORD, PGADMIN_EMAIL/PGADMIN_PASSWORD). There are no built-in credentials:
+# Docker Compose and the app refuse to start with them missing.
 ollama pull llama3.1
 ```
 
@@ -120,7 +122,8 @@ All settings come from `.env` (see [`.env.example`](.env.example)).
 | `JWT_SECRET` | yes | none | Secret for signing and verifying JWTs (HS256). Use a long random value. |
 | `JWT_EXPIRES_IN` | no | `1h` | Token lifetime: seconds or a duration (`15m`, `1h`, `7d`). |
 | `AUTH_USERNAME` / `AUTH_PASSWORD` | yes | none | Credentials accepted by `POST /login`. |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | yes (Docker) | `localhost`, `5432`, `postgres`, `postgres`, `insurance_db` | Postgres connection. The Postgres container also uses them to create its user and database. |
+| `DB_USER`, `DB_PASSWORD`, `DB_NAME` | yes (unless `DATABASE_URL` is set) | none | Postgres credentials and database. The Postgres container also uses them to create its user and database. Docker Compose and the app refuse to start without them. |
+| `DB_HOST`, `DB_PORT` | no | `localhost`, `5432` | Postgres host and port. |
 | `DATABASE_URL` | no | none | Full connection string; used instead of the `DB_*` values when set (CI, Docker). |
 | `LLM_PROVIDER` | no | `ollama` | `ollama`, `gemini`, `anthropic` or `openai`. Cloud providers read their usual API-key variables. |
 | `LLM_MODEL` | no | `llama3.1` | Model name for the chosen provider. |

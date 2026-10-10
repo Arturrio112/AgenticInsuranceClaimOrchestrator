@@ -2,7 +2,7 @@ import request from 'supertest';
 import { BaseMessage } from '@langchain/core/messages';
 import { app } from '../../api/webhook';
 import { ClaimListResponse, ClaimResolutionResponse, ClaimSummary } from '../../api/types';
-import { query, pool } from '../../db/client';
+import { query, closePool } from '../../db/client';
 import { createTables } from '../../db/schema';
 import { signToken } from '../../auth/jwt';
 
@@ -86,7 +86,7 @@ describe('E2E Eval Testing: Claim Resolution Workflow', () => {
     afterAll(async () => {
         if (originalThreshold === undefined) delete process.env.CONFIDENCE_THRESHOLD;
         else process.env.CONFIDENCE_THRESHOLD = originalThreshold;
-        await pool.end();
+        await closePool();
     });
 
     it('applies a high-confidence decision and stores verified citations', async () => {
