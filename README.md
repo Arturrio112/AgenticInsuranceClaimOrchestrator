@@ -1,89 +1,175 @@
 # Agentic Insurance Claim Orchestrator
 
-The **Agentic Insurance Claim Orchestrator** is an enterprise-grade, AI-driven insurance claim resolution system. By leveraging local Large Language Models (LLMs), it fully automates the end-to-end claim adjudication process. 
+An AI agent that investigates insurance claims. It reads the claim, checks the policy and coverage rules, and makes a decision you can audit: every decision cites the exact policy and coverage rules it relied on and carries a 0-100 confidence score. If the agent is not confident enough, the claim goes to a human reviewer instead of being resolved automatically.
 
-The orchestrator utilizes **LangGraph** to coordinate multi-step reasoning workflows, allowing the AI to independently retrieve policy details, check coverage limits, and review flags. It connects to an immutable **PostgreSQL** database securely through the **Model Context Protocol (MCP)**, ensuring the LLM accesses and manipulates data via well-defined, safe tool interfaces. 
+Built with **LangGraph.js**, a **local LLM via Ollama**, **PostgreSQL**, the **Model Context Protocol (MCP)**, **Langfuse** tracing and a JWT-secured **Express** API with a web console.
 
-## Features
-- **Automated Adjudication:** Fully automated claim triage and resolution using local LLMs (Ollama with Gemma2 or Llama3.1).
-- **Secure Data Access:** Immutable PostgreSQL database exposed via standard MCP tools.
-- **Agentic Workflow:** LangGraph.js implementation for cyclic reasoning and tool-use orchestration.
-- **Interfaces:** JWT-secured Webhook API and a claims console Web UI that shows each decision with its confidence and the policy rules behind it.
-- **Observability:** Comprehensive observability with Langfuse tracing.
-- **Audit Trail:** Every node, LLM call and tool call of a claim run is written to an append-only `audit_logs` table (UPDATE/DELETE are rejected by a DB trigger) and exposed via `GET /claims/:id/audit`.
+![Claims console showing an investigation result](docs/screenshots/ui-result-desktop.png)
 
-## Architecture Data Flow
+## Highlights
+
+- **Structured, cited decisions.** The LLM must return `approve` / `reject` / `flag`, a reasoning text, a confidence score and citations. All of it is validated with Zod. Citations are checked against what the tools actually returned, so made-up IDs are dropped.
+- **Human-in-the-loop.** A decision below `CONFIDENCE_THRESHOLD` (default 70) is stored as `needs_human_review`. Malformed LLM output falls back to human review too.
+- **Source of truth.** The API resolves cited IDs into the full policy and coverage-rule rows, and the UI shows them as readable cards.
+- **Audit trail.** Every node, LLM call and tool call goes into an append-only `audit_logs` table; a DB trigger rejects UPDATE and DELETE.
+- **Runs locally.** Ollama is the default model provider. Gemini, Anthropic and OpenAI can be switched in with one env var.
+- **Tested.** Jest unit tests across the graph nodes, MCP tools, repositories and routes, plus E2E evals against a real Postgres. CI runs lint, type check, unit and E2E on every PR.
+
+## How it works
+
+### The agent graph
+
+```mermaid
+flowchart LR
+    START((start)) --> load_claim
+    load_claim -->|claim not found| END((end))
+    load_claim --> agent
+    agent -->|tool calls| tools
+    tools --> agent
+    agent -->|investigation done| decide
+    decide --> persist
+    persist --> END
+```
+
+| Node | What it does |
+| --- | --- |
+| `load_claim` | Loads the claim and its policy number from Postgres. Ends the run if the claim does not exist. |
+| `agent` | The LLM investigates, calling `get_policy` and `check_coverage` as needed. The investigation is read-only. |
+| `tools` | Runs the requested tools against the database. |
+| `decide` | Asks the LLM for a structured `ClaimDecision` (`withStructuredOutput` + Zod), then keeps only citations the tools really returned. |
+| `persist` | Applies the confidence threshold and writes the final status and decision to the `claims` row. |
+
+### System overview
 
 ```mermaid
 flowchart TD
-    User([User]) -->|Submits Claim| UI[Web UI / Webhook API]
-    UI -->|Triggers Workflow| LangGraph[LangGraph Agent Orchestrator]
-    
-    subgraph Agentic System
-        LangGraph <-->|Reasons & Decides| LLM[Local LLM - Ollama]
-        LangGraph <-->|Tool Execution| MCP[MCP Server]
-    end
-    
-    MCP <-->|Queries & Updates| DB[(PostgreSQL)]
-    LangGraph -.->|Traces & Telemetry| Langfuse[Langfuse Observability]
-    LangGraph -.->|Audit callback| DB
+    User([User]) -->|browser| UI[Web UI - public/]
+    Client([API client]) -->|JWT| API
+    UI -->|JWT| API[Express API]
+    API -->|invoke| Graph[LangGraph agent]
+    Graph <-->|reason / decide| LLM[Ollama LLM]
+    Graph -->|tools + persist| DB[(PostgreSQL)]
+    Graph -.->|audit callback| DB
+    Graph -.->|traces| Langfuse[Langfuse]
+    MCPClient([External MCP client]) -->|stdio| MCP[MCP server]
+    MCP --> DB
 ```
 
-## Setup Instructions
+The agent and the MCP server expose the same capabilities (`get_policy`, `check_coverage`, plus `flag_review` on MCP), but they are wired separately: the agent calls LangChain tools in-process (`src/agent/nodes/tool_node.ts`), and the MCP server (`src/mcp/`) offers the tools to external MCP clients over stdio.
+
+## Tech stack
+
+| Area | Choice |
+| --- | --- |
+| Language | TypeScript (strict), Node.js 20 |
+| Agent framework | LangGraph.js, LangChain |
+| LLM | Ollama (`llama3.1` / `gemma2`) by default. Gemini, Anthropic and OpenAI are optional. |
+| Tool protocol | Model Context Protocol (`@modelcontextprotocol/sdk`) |
+| Database | PostgreSQL 15 (Docker), PgAdmin |
+| API / UI | Express, JWT (HS256). Plain HTML/CSS/ES-module UI with no build step. |
+| Observability | Langfuse, structured logger, audit table |
+| Testing / CI | Jest, Supertest, GitHub Actions |
+
+## Quick start
 
 ### Prerequisites
-- [Docker & Docker Compose](https://docs.docker.com/get-docker/)
-- [Node.js](https://nodejs.org/en/) (v20 or v22)
-- [Ollama](https://ollama.com/) (running locally)
 
-### 1. Environment Configuration
-Copy the sample environment file and adjust the variables if necessary.
+- [Docker & Docker Compose](https://docs.docker.com/get-docker/)
+- [Node.js](https://nodejs.org/en/) 20 or 22
+- [Ollama](https://ollama.com/) running locally
+
+### 1. Configure
+
 ```bash
 cp .env.example .env
-```
-Ensure Ollama is running locally and the appropriate model is pulled (e.g., `llama3.1` or `gemma2`).
-```bash
+# Edit .env: set JWT_SECRET, AUTH_USERNAME and AUTH_PASSWORD (the app will not start with them missing)
 ollama pull llama3.1
 ```
 
-#### Authentication settings
-The API refuses to start unless these are set in `.env` (there are no built-in defaults):
+When the app runs in Docker it reaches Ollama on your host through `OLLAMA_BASE_URL` (`http://host.docker.internal:11434` by default).
 
-| Variable | Purpose |
+### 2. Start the stack
+
+```bash
+make build      # docker-compose up -d --build: Postgres, PgAdmin and the app
+```
+
+### 3. Create the schema and demo data
+
+```bash
+npm install
+make db-seed    # creates the tables and inserts demo policies, coverage rules and claims
+```
+
+`make db-seed` runs from your machine against `DB_HOST`/`DB_PORT` in `.env` (`localhost:5432`, which Docker Compose exposes). It **truncates** the tables first.
+
+### 4. Use it
+
+- Web UI: <http://localhost:3000>. Sign in with `AUTH_USERNAME` / `AUTH_PASSWORD`.
+- PgAdmin: <http://localhost:5050>.
+- API: see [API reference](#api-reference).
+
+The demo data has an auto collision claim (#1) and a home water-damage claim (#2), both `pending`.
+
+## Configuration
+
+All settings come from `.env` (see [`.env.example`](.env.example)).
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `JWT_SECRET` | yes | none | Secret for signing and verifying JWTs (HS256). Use a long random value. |
+| `JWT_EXPIRES_IN` | no | `1h` | Token lifetime: seconds or a duration (`15m`, `1h`, `7d`). |
+| `AUTH_USERNAME` / `AUTH_PASSWORD` | yes | none | Credentials accepted by `POST /login`. |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | yes (Docker) | `localhost`, `5432`, `postgres`, `postgres`, `insurance_db` | Postgres connection. The Postgres container also uses them to create its user and database. |
+| `DATABASE_URL` | no | none | Full connection string; used instead of the `DB_*` values when set (CI, Docker). |
+| `LLM_PROVIDER` | no | `ollama` | `ollama`, `gemini`, `anthropic` or `openai`. Cloud providers read their usual API-key variables. |
+| `LLM_MODEL` | no | `llama3.1` | Model name for the chosen provider. |
+| `OLLAMA_BASE_URL` | no | `http://localhost:11434` | Where Ollama is reachable. |
+| `CONFIDENCE_THRESHOLD` | no | `70` | Decisions with a lower `confidence_score` (0-100) go to `needs_human_review`. |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | no | none | Enables Langfuse tracing when both are set. |
+| `LANGFUSE_BASEURL` | no | `https://cloud.langfuse.com` | Langfuse host, e.g. a self-hosted instance. |
+| `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` | yes (Docker) | none | PgAdmin login. |
+| `PORT` | no | `3000` | API port. |
+
+## Make commands
+
+| Command | What it does |
 | --- | --- |
-| `JWT_SECRET` | Secret used to sign and verify JWTs (HS256). Use a long random value, e.g. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`. |
-| `JWT_EXPIRES_IN` | Token lifetime, in seconds or as a duration (`15m`, `1h`, `7d`). Defaults to `1h`. |
-| `AUTH_USERNAME` / `AUTH_PASSWORD` | Credentials accepted by `POST /login`. |
+| `make up` | Start the Docker stack. |
+| `make build` | Rebuild and start the Docker stack. |
+| `make down` | Stop the stack. |
+| `make clean` | Stop the stack, **delete the database volume**, and remove `dist/` and `node_modules/`. |
+| `make logs` | Follow container logs. |
+| `make db-seed` | Create the tables and reset the demo data. |
+| `make test` | Run the unit tests. |
+| `make test-e2e` | Run the E2E evals (needs Postgres; the LLM is mocked). |
 
-Get a token and call the protected endpoint:
+## API reference
+
+Every endpoint except `/login` needs an `Authorization: Bearer <token>` header and returns `401` without a valid, unexpired token. Errors always have the shape `{ "error": string }`.
+
+| Method & path | Purpose |
+| --- | --- |
+| `POST /login` | `{ username, password }` → `{ token }`. Returns `400` for a malformed body and `401` for wrong credentials. |
+| `GET /claims` | `{ claims: ClaimSummary[] }`, ordered by `id`. |
+| `GET /claims/:id` | One `ClaimSummary`. Returns `400` for an invalid id and `404` if the claim is not found. |
+| `POST /claim` | `{ claim_id }`: runs the agent and returns a `ClaimResolutionResponse`. |
+| `GET /claims/:id/audit` | The audit trail of the claim's runs. |
+
 ```bash
 TOKEN=$(curl -s -X POST localhost:3000/login -H 'Content-Type: application/json' \
   -d '{"username":"<AUTH_USERNAME>","password":"<AUTH_PASSWORD>"}' | jq -r .token)
+
+curl localhost:3000/claims -H "Authorization: Bearer $TOKEN"
 curl -X POST localhost:3000/claim -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' -d '{"claim_id":1}'
 ```
-`/login` returns `400` for a malformed body and `401` for wrong credentials; `/claim` returns `401` without a valid, unexpired token. The API and the MCP server share one auth module (`src/auth/jwt.ts`).
 
-### 2. Run the Application using Docker Compose
-The project uses Docker Compose to orchestrate the Node.js application, PostgreSQL database, and PgAdmin.
-```bash
-docker-compose up --build -d
-```
-*The API will be available at `http://localhost:3000` and PgAdmin at `http://localhost:5050`.*
+The API and the MCP server share one auth module (`src/auth/jwt.ts`). Response types live in `src/api/types.ts`.
 
-### 3. Database Initialization (Optional)
-If you need to seed the database manually, you can run the initialization scripts via npm. (The `app` container will connect to the `postgres` container on port 5432).
-```bash
-npm install
-npm run build
-npx ts-node src/db/schema.ts
-npx ts-node src/db/seed.ts
-```
-*(You may also use `make db-seed` if configured in the Makefile).*
+### Claim decisions
 
-## Claim Decisions
-
-`POST /claim` (JWT-protected) runs the agent and returns a structured, cited decision:
+`POST /claim` returns a structured, cited decision:
 
 ```json
 {
@@ -123,57 +209,98 @@ npx ts-node src/db/seed.ts
 }
 ```
 
-- `status` is one of `approved`, `rejected`, `flagged`, or `needs_human_review`. Any decision with `confidence_score` below `CONFIDENCE_THRESHOLD` (default `70`) goes to `needs_human_review`.
-- `confidence_threshold` is the threshold that was applied to this decision, so clients (like the web UI) never have to guess the configured value.
+- `status` is one of `approved`, `rejected`, `flagged` or `needs_human_review`. Any decision with `confidence_score` below the threshold goes to `needs_human_review`.
+- `confidence_threshold` is the threshold that was applied to this decision, so clients such as the web UI don't have to guess the configured value.
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
-- If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
-- `claim` is the claim as stored *after* the decision was persisted, so `claim.status` matches `status`.
-- `sources` is the "source of truth" for the decision: the cited policy and coverage rules loaded from Postgres. The policy is resolved by `policy_id`, falling back to `policy_number`. Cited IDs that do not exist are silently left out.
-- The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
-
-### Listing claims
-
-Both endpoints require the same `Authorization: Bearer <token>` header as `/claim`:
-
-| Method & path | Response |
-| --- | --- |
-| `GET /claims` | `200 { "claims": ClaimSummary[] }`, ordered by `id` ascending |
-| `GET /claims/:id` | `200 ClaimSummary`, `400 { "error" }` if `id` is not a positive integer, `404 { "error" }` if the claim does not exist |
-
-```bash
-curl localhost:3000/claims -H "Authorization: Bearer $TOKEN"
-curl localhost:3000/claims/1 -H "Authorization: Bearer $TOKEN"
-```
-
-`ClaimSummary` has the same shape as `claim` above: `claim_amount` is a number (not the DECIMAL string Postgres returns) and `created_at` is an ISO 8601 string.
+- If the model returns malformed output, the claim is routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
+- `claim` is the claim as stored *after* the decision was saved, so `claim.status` matches `status`.
+- `sources` resolves the citations to full rows: the cited policy (by `policy_id`, falling back to `policy_number`) and the cited coverage rules. Cited IDs that do not exist are left out.
+- In `ClaimSummary`, `claim_amount` is a number (not the DECIMAL string Postgres returns) and `created_at` is an ISO 8601 string.
 
 ## Web UI
 
-Open `http://localhost:3000` and sign in with the `AUTH_USERNAME` / `AUTH_PASSWORD` from your `.env`.
+Open <http://localhost:3000> and sign in.
 
-1. **Pick a claim** from the list (`GET /claims`). Each row shows the amount, damage type, policy and a status badge (icon + text, never colour alone).
-2. **Run AI investigation.** The five pipeline steps (Load claim, Check policy, Check coverage, Decide, Save) explain what the agent does and animate while it works. A local model usually needs 30-90 s; the button is disabled until the run finishes.
-3. **Read the result:** a verdict stamp (Approved / Rejected / Flagged / Needs human review), a confidence meter marking the threshold (below it, the claim goes to a person), the reasoning, a **Source of truth** section with the cited policy and coverage rules as plain-language cards, and the agent's notes (collapsible). The claim's status in the list updates straight away.
+1. **Pick a claim** from the list. Each row shows the amount, damage type, policy and a status badge (icon + text, never colour alone).
+2. **Run AI investigation.** Five pipeline steps (Load claim, Check policy, Check coverage, Decide, Save) explain what the agent does and animate while it works. A local model usually needs 30-90 s; the button is disabled until the run finishes.
+3. **Read the result:**
+   - a verdict stamp: Approved, Rejected, Flagged or Needs human review
+   - a confidence meter that marks the threshold
+   - the reasoning
+   - a **Source of truth** section showing the cited policy and coverage rules as plain-language cards
+   - the agent's notes, collapsed by default
 
-![Investigation result with confidence below the threshold](docs/screenshots/ui-result-desktop.png)
+   The claim's status in the list updates straight away.
 
 | Investigation in progress | Phone width |
 | --- | --- |
 | ![Pipeline steps animating while the agent runs](docs/screenshots/ui-investigating.png) | ![Approved claim on a phone](docs/screenshots/ui-result-mobile.png) |
 
-The UI is plain HTML, CSS and browser ES modules in `public/` (no framework, no build step), follows the system light/dark setting and returns to the sign-in screen when the token expires. Presentation logic lives in the DOM-free `public/js/view-model.mjs`, which is unit-tested by `src/__tests__/ui/viewModel.test.mjs`.
+The UI is plain HTML, CSS and browser ES modules in `public/`, with no framework and no build step. It follows the system light/dark setting and returns to the sign-in screen when the token expires. Presentation logic lives in the DOM-free `public/js/view-model.mjs`, which is unit-tested.
 
-## Audit Trail
-Each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`) that records
-`node_start`/`node_end`, `llm_start`/`llm_end` (messages and tool calls), `tool_start`/`tool_end` (tool name, input, output)
-and `error` events into `audit_logs`. Writes are queued in event order, flushed before the HTTP response returns,
-and never fail the claim (errors are only logged). Long strings in payloads are truncated.
+## Observability
+
+- **Langfuse:** when `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set, every `POST /claim` run is traced (LLM calls, tool calls, latency).
+- **Logs:** `src/utils/logger.ts` writes standard console logs.
+- **Audit trail:** each `POST /claim` run attaches an `AuditCallbackHandler` (`src/agent/callbacks/audit/`). It records these events in `audit_logs`:
+  - `node_start` / `node_end`
+  - `llm_start` / `llm_end`, with messages and tool calls
+  - `tool_start` / `tool_end`, with tool name, input and output
+  - `error`
+
+  Writes are queued in event order and flushed before the HTTP response returns. They never fail the claim (errors are only logged), and long strings are truncated.
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/claims/1/audit
-# => { "claim_id": 1, "count": 8, "entries": [{ "step_index": 0, "event_type": "node_start", "node_name": "agent", "payload": {...}, ... }] }
+# => { "claim_id": 1, "count": 8, "entries": [{ "step_index": 0, "event_type": "node_start", "node_name": "load_claim", "payload": {...}, ... }] }
 ```
 
-## Future Improvements
-- **Duplication Triage:** Automatically detect and triage duplicate claims (using vector similarity or SQL) to prevent double payouts.
-- **Fraud Scoring:** Analyze claims for potential fraud using ML heuristics or 3rd-party risk assessment APIs before auto-approving them.
+## MCP server
+
+`src/mcp/server.ts` runs an MCP server over stdio with three tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `get_policy` | Policy details by policy number. |
+| `check_coverage` | Coverage rule for a policy type and damage type. |
+| `flag_review` | Flags a claim for review and appends the reason to its description (write). |
+
+```bash
+npx ts-node src/mcp/server.ts
+```
+
+Point any MCP client (such as Claude Desktop or the MCP Inspector) at that command. Auth helpers are in `src/mcp/auth.ts`.
+
+## Testing
+
+```bash
+npm run lint && npx tsc --noEmit
+make test        # unit tests: nodes, tools, repositories, routes, auth, audit, UI view model
+make test-e2e    # E2E evals against Postgres with a mocked LLM
+```
+
+The E2E evals (`src/__tests__/e2e/`) run the whole graph through the HTTP API. They check the final DB state, the human-review routing, citation filtering, the `sources` resolution and the audit trail. **They truncate the tables**, so point `DATABASE_URL` at a throwaway database. CI (`.github/workflows/ci.yml`) runs all of the above against a Postgres service container.
+
+## Project structure
+
+```text
+src/
+  agent/          LangGraph: graph.ts, state.ts, decision.ts (Zod schema), model.ts (provider switch),
+                  config.ts (threshold), prompts.ts, nodes/, callbacks/audit/
+  api/            Express app (webhook.ts), routes/ (auth, claims), sources.ts, types.ts
+  auth/           Shared JWT and credential handling
+  db/             pg client, schema, seed, repositories (claims, sources, audit)
+  mcp/            MCP server, auth and tools/
+  utils/          logger
+  __tests__/      unit, api, db, auth, agent, mcp, ui and e2e suites
+public/           Web UI (index.html, css/, js/)
+docs/             epics_and_tickets.md, feature_map.md, screenshots/
+```
+
+See [`docs/feature_map.md`](docs/feature_map.md) for a file-by-file map and [`docs/epics_and_tickets.md`](docs/epics_and_tickets.md) for the delivery plan.
+
+## Roadmap
+
+- **Agent tools over MCP:** have the LangGraph agent call the MCP server through an MCP client (for example `@langchain/mcp-adapters`), so the MCP server becomes the only data-access layer.
+- **Duplicate triage:** detect duplicate claims (vector similarity or SQL) to prevent double payouts.
+- **Fraud scoring:** score claims for fraud risk before auto-approving them.
