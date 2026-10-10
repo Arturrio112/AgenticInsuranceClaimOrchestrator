@@ -55,6 +55,15 @@ The project is divided into three main domains:
 *   **Credentials:** `src/auth/credentials.ts` - Compares `/login` input with `AUTH_USERNAME` / `AUTH_PASSWORD` using `crypto.timingSafeEqual`.
 *   **Tests:** `src/__tests__/auth/` - Unit tests for token handling, the middleware and `/login` (no DB or LLM needed).
 
+### 4b. Web UI (`/public/`) - Ticket 6.1 [x]
+*Framework-free claims console served statically by Express. Plain HTML, CSS and browser ES modules; no build step.*
+*   **Page:** `public/index.html` - Sign-in view and the console (claims list + case panel).
+*   **Styles:** `public/css/app.css` - Design tokens, light/dark via `prefers-color-scheme`, responsive down to phone width.
+*   **Entry point:** `public/js/main.mjs` - State and wiring: sign-in, claims list, running an investigation, 401 -> back to sign-in.
+*   **API client:** `public/js/api.mjs` - `login`, `listClaims` (`GET /claims`), `investigateClaim` (`POST /claim`) with the JWT header.
+*   **View model:** `public/js/view-model.mjs` - Pure, DOM-free logic: status labels/tones, currency/date formatting, confidence bands vs. `CONFIDENCE_THRESHOLD`, Source of Truth card text, pipeline stage timing. Unit-tested in `src/__tests__/ui/viewModel.test.mjs` (native ESM under Jest).
+*   **Rendering:** `public/js/claims-list.mjs`, `public/js/pipeline.mjs`, `public/js/result.mjs`, helpers in `public/js/dom.mjs`, token storage in `public/js/session.mjs`.
+
 ### 5. Configuration & Observability (`/`)
 *   **Docker:** `docker-compose.yml` - Spins up Postgres.
 *   **Observability:** `src/utils/logger.ts` or Langfuse configuration injected into the LangGraph setup.

@@ -80,7 +80,7 @@ We have successfully completed **Phase 1: Database Layer & Infrastructure**. The
 ## 💻 Epic 6: Simple Web UI
 *Goal: Create a simple frontend to interact with the insurance claim orchestrator.*
 
-- [ ] **Ticket 6.1: Frontend UI Application**
+- [x] **Ticket 6.1: Frontend UI Application**
   - Create a simple HTML/JS or React frontend (e.g. in a `public/` folder served by Express) where users can input a claim, submit it, and see the AI's response and decision.
   - *Dependencies:* Epic 5 (for auth if needed, or can be done in parallel).
 

@@ -8,7 +8,7 @@ The orchestrator utilizes **LangGraph** to coordinate multi-step reasoning workf
 - **Automated Adjudication:** Fully automated claim triage and resolution using local LLMs (Ollama with Gemma2 or Llama3.1).
 - **Secure Data Access:** Immutable PostgreSQL database exposed via standard MCP tools.
 - **Agentic Workflow:** LangGraph.js implementation for cyclic reasoning and tool-use orchestration.
-- **Interfaces:** JWT-secured Webhook API and simple Web UI for claim submission and monitoring.
+- **Interfaces:** JWT-secured Webhook API and a claims console Web UI that shows each decision with its confidence and the policy rules behind it.
 - **Observability:** Comprehensive observability with Langfuse tracing.
 
 ## Architecture Data Flow
@@ -102,6 +102,22 @@ npx ts-node src/db/seed.ts
 - Citations only include policy and coverage-rule IDs that the tools actually returned. IDs the model invents are removed.
 - If the model returns malformed output, the claim is safely routed to human review (`decision: "flag"`, `confidence_score: 0`, `fallback: true`).
 - The response type is `ClaimResolutionResponse` in `src/api/types.ts`.
+
+## Web UI
+
+Open `http://localhost:3000` and sign in with the `AUTH_USERNAME` / `AUTH_PASSWORD` from your `.env`.
+
+1. **Pick a claim** from the list (`GET /claims`). Each row shows the amount, damage type, policy and a status badge (icon + text, never colour alone).
+2. **Run AI investigation.** The five pipeline steps (Load claim, Check policy, Check coverage, Decide, Save) explain what the agent does and animate while it works. A local model usually needs 30-90 s; the button is disabled until the run finishes.
+3. **Read the result:** a verdict stamp (Approved / Rejected / Flagged / Needs human review), a confidence meter marking the threshold (below it, the claim goes to a person), the reasoning, a **Source of truth** section with the cited policy and coverage rules as plain-language cards, and the agent's notes (collapsible). The claim's status in the list updates straight away.
+
+![Investigation result with confidence below the threshold](docs/screenshots/ui-result-desktop.png)
+
+| Investigation in progress | Phone width |
+| --- | --- |
+| ![Pipeline steps animating while the agent runs](docs/screenshots/ui-investigating.png) | ![Approved claim on a phone](docs/screenshots/ui-result-mobile.png) |
+
+The UI is plain HTML, CSS and browser ES modules in `public/` (no framework, no build step), follows the system light/dark setting and returns to the sign-in screen when the token expires. Presentation logic lives in the DOM-free `public/js/view-model.mjs`, which is unit-tested by `src/__tests__/ui/viewModel.test.mjs`.
 
 ## Future Improvements
 - **Duplication Triage:** Automatically detect and triage duplicate claims (using vector similarity or SQL) to prevent double payouts.
